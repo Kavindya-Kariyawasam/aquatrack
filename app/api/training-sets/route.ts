@@ -35,16 +35,41 @@ export async function GET(req: NextRequest) {
       query.date = { $gte: startDate, $lt: endDate };
     }
 
+    if (authUser.role === "swimmer") {
+      Object.assign(query, {
+        $or: [
+          { isPrivate: { $ne: true } },
+          { isPrivate: true, assignedToUserId: authUser.userId },
+        ],
+      });
+    }
+
     const sets = await TrainingSet.find(query)
       .sort({ date: -1, createdAt: -1 })
       .limit(Math.min(limit, 100))
       .lean();
 
+    let privateSet = null;
+    if (authUser.role === "swimmer") {
+      privateSet = await TrainingSet.findOne({
+        isPrivate: true,
+        assignedToUserId: authUser.userId,
+        ...(type && ["swimming", "land"].includes(type) ? { type } : {}),
+      })
+        .sort({ updatedAt: -1 })
+        .lean();
+    }
+
     const availableDates = Array.from(
       new Set(sets.map((set) => new Date(set.date).toISOString().slice(0, 10))),
     ).sort((a, b) => a.localeCompare(b));
 
-    return NextResponse.json({ success: true, sets, availableDates });
+    return NextResponse.json({
+      success: true,
+      sets,
+      availableDates,
+      privateSet,
+    });
   } catch (error) {
     console.error("Training sets GET error:", error);
     return NextResponse.json(

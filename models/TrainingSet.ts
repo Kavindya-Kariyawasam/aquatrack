@@ -10,6 +10,10 @@ export interface ITrainingSet {
   postedBy: string;
   postedByName: string;
   isAIGenerated?: boolean;
+  isPrivate?: boolean;
+  assignedToUserId?: string;
+  assignedToUserName?: string;
+  sourceRequestId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -49,6 +53,24 @@ const trainingSetSchema = new Schema<ITrainingSet>(
     isAIGenerated: {
       type: Boolean,
       default: false,
+    },
+    isPrivate: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    assignedToUserId: {
+      type: String,
+      default: "",
+      index: true,
+    },
+    assignedToUserName: {
+      type: String,
+      default: "",
+    },
+    sourceRequestId: {
+      type: String,
+      default: "",
     },
   },
   {

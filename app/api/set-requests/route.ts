@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/lib/jwt";
 import dbConnect from "@/lib/mongodb";
 import SetRequest from "@/models/SetRequest";
+import TrainingSet from "@/models/TrainingSet";
 import User from "@/models/User";
 
 export async function GET(req: NextRequest) {
@@ -106,10 +107,13 @@ export async function PATCH(req: NextRequest) {
 
     const body = await req.json();
     const requestId = String(body.requestId || "").trim();
-    const status = String(body.status || "").trim();
+    const incomingStatus = String(body.status || "").trim();
     const response = String(body.response || "")
       .trim()
       .slice(0, 500);
+    const personalSetContent = String(body.personalSetContent || "")
+      .trim()
+      .slice(0, 6000);
 
     if (!requestId) {
       return NextResponse.json(
@@ -118,11 +122,57 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    if (!["pending", "approved", "fulfilled"].includes(status)) {
+    if (!["pending", "approved", "fulfilled"].includes(incomingStatus)) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
     await dbConnect();
+
+    const existingRequest = await SetRequest.findById(requestId).lean();
+    if (!existingRequest) {
+      return NextResponse.json({ error: "Request not found" }, { status: 404 });
+    }
+
+    const managerProfile = await User.findById(authUser.userId)
+      .select("profile email")
+      .lean();
+    const managerDisplayName =
+      (managerProfile?.profile as { callingName?: string; fullName?: string })
+        ?.callingName ||
+      (managerProfile?.profile as { callingName?: string; fullName?: string })
+        ?.fullName ||
+      managerProfile?.email ||
+      authUser.email;
+
+    let privateSet = null;
+    let status = incomingStatus;
+
+    if (personalSetContent) {
+      status = "fulfilled";
+
+      privateSet = await TrainingSet.findOneAndUpdate(
+        {
+          isPrivate: true,
+          assignedToUserId: existingRequest.userId,
+          type: existingRequest.type,
+        },
+        {
+          $set: {
+            type: existingRequest.type,
+            date: new Date(),
+            content: personalSetContent,
+            postedBy: authUser.userId,
+            postedByName: managerDisplayName,
+            isAIGenerated: false,
+            isPrivate: true,
+            assignedToUserId: existingRequest.userId,
+            assignedToUserName: existingRequest.userName,
+            sourceRequestId: String(existingRequest._id),
+          },
+        },
+        { new: true, upsert: true },
+      ).lean();
+    }
 
     const updated = await SetRequest.findByIdAndUpdate(
       requestId,
@@ -140,7 +190,11 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Request not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, request: updated });
+    return NextResponse.json({
+      success: true,
+      request: updated,
+      privateSetPosted: Boolean(privateSet),
+    });
   } catch (error) {
     console.error("Set request PATCH error:", error);
     return NextResponse.json(
