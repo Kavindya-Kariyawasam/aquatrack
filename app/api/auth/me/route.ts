@@ -19,7 +19,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const profile = user.profile as { fullName?: string; callingName?: string };
+    const profile = user.profile as {
+      fullName?: string;
+      callingName?: string;
+      gender?: "male" | "female" | "";
+      mainEvents?: string[];
+      extraEvents?: string[];
+    };
 
     return NextResponse.json({
       success: true,
@@ -28,6 +34,9 @@ export async function GET(req: NextRequest) {
         role: user.role,
         isApproved: Boolean(user.isApproved),
         name: profile?.callingName || profile?.fullName || "Swimmer",
+        gender: profile?.gender || "",
+        mainEvents: profile?.mainEvents || [],
+        extraEvents: profile?.extraEvents || [],
       },
     });
   } catch (error) {
