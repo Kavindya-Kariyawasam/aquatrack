@@ -17,6 +17,8 @@ type TrainingSet = {
   content: string;
   postedByName: string;
   isAIGenerated?: boolean;
+  isPrivate?: boolean;
+  assignedToUserName?: string;
 };
 
 type SetRequest = {
@@ -77,6 +79,7 @@ export default function TrainingPage() {
   const [sets, setSets] = useState<TrainingSet[]>([]);
   const [availableSetDates, setAvailableSetDates] = useState<string[]>([]);
   const [role, setRole] = useState<Role>("swimmer");
+  const [isRoleLoaded, setIsRoleLoaded] = useState(false);
   const [monthFilter, setMonthFilter] = useState(
     new Date().toISOString().slice(0, 7),
   );
@@ -93,6 +96,10 @@ export default function TrainingPage() {
 
   const [requestMessage, setRequestMessage] = useState("");
   const [requests, setRequests] = useState<SetRequest[]>([]);
+  const [privateSet, setPrivateSet] = useState<TrainingSet | null>(null);
+  const [privateSetDrafts, setPrivateSetDrafts] = useState<
+    Record<string, string>
+  >({});
   const [holidays, setHolidays] = useState<
     Array<{
       date: string;
@@ -138,6 +145,7 @@ export default function TrainingPage() {
       if (setsRes.ok) {
         setSets(setsData.sets || []);
         setAvailableSetDates(setsData.availableDates || []);
+        setPrivateSet((setsData.privateSet || null) as TrainingSet | null);
       }
 
       if (settingsRes.ok && Array.isArray(settingsData?.settings?.holidays)) {
@@ -151,8 +159,20 @@ export default function TrainingPage() {
       }
     } catch {
       toast.error("Failed to load training data");
+    } finally {
+      setIsRoleLoaded(true);
     }
   }, [monthFilter, type]);
+
+  const onPostPrivateSet = async (requestId: string) => {
+    const draft = String(privateSetDrafts[requestId] || "").trim();
+    if (!draft) {
+      toast.error("Write a private set first");
+      return;
+    }
+
+    await onUpdateRequestStatus(requestId, "fulfilled", draft);
+  };
 
   useEffect(() => {
     void loadSets();
@@ -294,12 +314,13 @@ export default function TrainingPage() {
   const onUpdateRequestStatus = async (
     requestId: string,
     status: "pending" | "approved" | "fulfilled",
+    personalSetContent = "",
   ) => {
     try {
       const response = await fetch("/api/set-requests", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestId, status }),
+        body: JSON.stringify({ requestId, status, personalSetContent }),
       });
 
       const data = await response.json();
@@ -308,8 +329,15 @@ export default function TrainingPage() {
         return;
       }
 
-      toast.success("Request status updated");
-      await loadSetRequests();
+      toast.success(
+        personalSetContent
+          ? "Private set posted and request fulfilled"
+          : "Request status updated",
+      );
+      if (personalSetContent) {
+        setPrivateSetDrafts((prev) => ({ ...prev, [requestId]: "" }));
+      }
+      await Promise.all([loadSetRequests(), loadSets()]);
     } catch {
       toast.error("Network error while updating request");
     }
@@ -331,6 +359,17 @@ export default function TrainingPage() {
       .filter((set) => toIsoDate(set.date) === selectedDate)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [selectedDate, sets]);
+
+  if (!isRoleLoaded) {
+    return (
+      <div className="space-y-6">
+        <h1 className="section-heading">Training</h1>
+        <Card>
+          <p className="text-gray-400">Loading training workspace...</p>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -495,6 +534,21 @@ export default function TrainingPage() {
         </Card>
       )}
 
+      {!isManager && privateSet && (
+        <Card>
+          <h2 className="text-xl font-semibold text-primary-300 mb-3">
+            My Private Set ({privateSet.type})
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-gray-400 mb-2">
+            Last updated by {privateSet.postedByName} on{" "}
+            {formatDate(privateSet.date)}
+          </p>
+          <pre className="whitespace-pre-wrap text-sm text-slate-800 dark:text-gray-100 font-sans">
+            {privateSet.content}
+          </pre>
+        </Card>
+      )}
+
       {canManageSets && (
         <Card>
           <h2 className="text-xl font-semibold text-primary-300 mb-3">
@@ -596,33 +650,53 @@ export default function TrainingPage() {
                 )}
 
                 {isManager && (
-                  <div className="mt-3 flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() =>
-                        void onUpdateRequestStatus(request._id, "approved")
+                  <div className="mt-3 space-y-2">
+                    <textarea
+                      className="input-field w-full min-h-28"
+                      placeholder="Optional: write a private set for this swimmer. Posting will overwrite their previous private set of this type."
+                      value={privateSetDrafts[request._id] || ""}
+                      onChange={(event) =>
+                        setPrivateSetDrafts((prev) => ({
+                          ...prev,
+                          [request._id]: event.target.value,
+                        }))
                       }
-                    >
-                      Approve
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() =>
-                        void onUpdateRequestStatus(request._id, "fulfilled")
-                      }
-                    >
-                      Fulfilled
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={() =>
-                        void onUpdateRequestStatus(request._id, "pending")
-                      }
-                    >
-                      Set Pending
-                    </Button>
+                    />
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => void onPostPrivateSet(request._id)}
+                      >
+                        Post Private Set
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          void onUpdateRequestStatus(request._id, "approved")
+                        }
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() =>
+                          void onUpdateRequestStatus(request._id, "fulfilled")
+                        }
+                      >
+                        Fulfilled
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() =>
+                          void onUpdateRequestStatus(request._id, "pending")
+                        }
+                      >
+                        Set Pending
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
