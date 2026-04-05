@@ -59,6 +59,17 @@ export default function ProgressPage() {
     null,
   );
   const [isLoadingSwimmer, setIsLoadingSwimmer] = useState(false);
+  const [editingTimingId, setEditingTimingId] = useState<string | null>(null);
+  const [editEvent, setEditEvent] = useState<SwimmingEvent>(SWIMMING_EVENTS[0]);
+  const [editTime, setEditTime] = useState("");
+  const [editDate, setEditDate] = useState(
+    new Date().toISOString().slice(0, 10),
+  );
+  const [editType, setEditType] = useState<"trial" | "meet">("trial");
+  const [editMeetName, setEditMeetName] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [deletingTimingId, setDeletingTimingId] = useState<string | null>(null);
 
   const isManager = role === "admin" || role === "coach";
 
@@ -163,6 +174,83 @@ export default function ProgressPage() {
     }
   };
 
+  const startEditTiming = (timing: Timing) => {
+    setEditingTimingId(timing._id);
+    setEditEvent(timing.event as SwimmingEvent);
+    setEditTime(timing.time);
+    setEditDate(new Date(timing.date).toISOString().slice(0, 10));
+    setEditType(timing.type);
+    setEditMeetName(timing.meetName || "");
+    setEditNotes("");
+  };
+
+  const cancelEditTiming = () => {
+    setEditingTimingId(null);
+    setIsSavingEdit(false);
+  };
+
+  const onSaveEditTiming = async () => {
+    if (!editingTimingId) return;
+
+    setIsSavingEdit(true);
+    try {
+      const response = await fetch("/api/timings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          timingId: editingTimingId,
+          event: editEvent,
+          time: editTime,
+          date: editDate,
+          type: editType,
+          meetName: editMeetName,
+          notes: editNotes,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.error || "Failed to update timing");
+        return;
+      }
+
+      toast.success("Timing updated");
+      setEditingTimingId(null);
+      await loadData();
+    } catch {
+      toast.error("Network error while updating timing");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const onDeleteTiming = async (timingId: string) => {
+    setDeletingTimingId(timingId);
+    try {
+      const response = await fetch("/api/timings", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timingId }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.error || "Failed to delete timing");
+        return;
+      }
+
+      toast.success("Timing deleted");
+      if (editingTimingId === timingId) {
+        setEditingTimingId(null);
+      }
+      await loadData();
+    } catch {
+      toast.error("Network error while deleting timing");
+    } finally {
+      setDeletingTimingId(null);
+    }
+  };
+
   if (isManager) {
     return (
       <div className="space-y-6">
@@ -174,7 +262,7 @@ export default function ProgressPage() {
           {overallRows.length === 0 ? (
             <p className="text-gray-400">No timing records found.</p>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="max-h-[48vh] overflow-auto rounded border border-primary-500/20">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -374,6 +462,9 @@ export default function ProgressPage() {
         <h2 className="text-xl font-semibold text-primary-300 mb-4">
           Recent Timings
         </h2>
+        <p className="text-sm text-slate-600 dark:text-gray-400 mb-3">
+          You can edit or delete your personal timing entries here.
+        </p>
         {timings.length === 0 ? (
           <p className="text-gray-400">No timings yet.</p>
         ) : (
@@ -386,16 +477,104 @@ export default function ProgressPage() {
                   <th>Time</th>
                   <th>Type</th>
                   <th>Meet</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {timings.map((timing) => (
                   <tr key={timing._id}>
-                    <td>{formatDate(timing.date)}</td>
-                    <td className="capitalize">{timing.event}</td>
-                    <td>{timing.time}</td>
-                    <td className="capitalize">{timing.type}</td>
-                    <td>{timing.meetName || "-"}</td>
+                    {editingTimingId === timing._id ? (
+                      <>
+                        <td>
+                          <Input
+                            type="date"
+                            value={editDate}
+                            onChange={(e) => setEditDate(e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <Select
+                            value={editEvent}
+                            onChange={(e) =>
+                              setEditEvent(e.target.value as SwimmingEvent)
+                            }
+                            options={SWIMMING_EVENTS.map((value) => ({
+                              value,
+                              label: value,
+                            }))}
+                          />
+                        </td>
+                        <td>
+                          <Input
+                            value={editTime}
+                            onChange={(e) => setEditTime(e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <Select
+                            value={editType}
+                            onChange={(e) =>
+                              setEditType(e.target.value as "trial" | "meet")
+                            }
+                            options={[
+                              { value: "trial", label: "Trial" },
+                              { value: "meet", label: "Meet" },
+                            ]}
+                          />
+                        </td>
+                        <td>
+                          <Input
+                            value={editMeetName}
+                            onChange={(e) => setEditMeetName(e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              onClick={onSaveEditTiming}
+                              isLoading={isSavingEdit}
+                            >
+                              Save
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={cancelEditTiming}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td>{formatDate(timing.date)}</td>
+                        <td className="capitalize">{timing.event}</td>
+                        <td>{timing.time}</td>
+                        <td className="capitalize">{timing.type}</td>
+                        <td>{timing.meetName || "-"}</td>
+                        <td>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => startEditTiming(timing)}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              onClick={() => void onDeleteTiming(timing._id)}
+                              isLoading={deletingTimingId === timing._id}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </tbody>
