@@ -29,6 +29,16 @@ type SetRequest = {
   createdAt: string;
 };
 
+type SettingsResponse = {
+  settings?: {
+    holidays?: Array<{
+      date: string;
+      reason?: string;
+      sessionType: "swimming" | "land" | "none";
+    }>;
+  };
+};
+
 function toIsoDate(value: Date | string): string {
   return new Date(value).toISOString().slice(0, 10);
 }
@@ -83,6 +93,13 @@ export default function TrainingPage() {
 
   const [requestMessage, setRequestMessage] = useState("");
   const [requests, setRequests] = useState<SetRequest[]>([]);
+  const [holidays, setHolidays] = useState<
+    Array<{
+      date: string;
+      reason?: string;
+      sessionType: "swimming" | "land" | "none";
+    }>
+  >([]);
 
   const canManageSets = useMemo(
     () => role === "coach" || role === "admin",
@@ -104,13 +121,15 @@ export default function TrainingPage() {
 
   const loadSets = useCallback(async () => {
     try {
-      const [meRes, setsRes] = await Promise.all([
+      const [meRes, setsRes, settingsRes] = await Promise.all([
         fetch("/api/auth/me"),
         fetch(`/api/training-sets?type=${type}&month=${monthFilter}&limit=200`),
+        fetch("/api/settings"),
       ]);
 
       const meData = await meRes.json();
       const setsData = await setsRes.json();
+      const settingsData = (await settingsRes.json()) as SettingsResponse;
 
       if (meRes.ok && meData.user?.role) {
         setRole(meData.user.role as Role);
@@ -119,6 +138,16 @@ export default function TrainingPage() {
       if (setsRes.ok) {
         setSets(setsData.sets || []);
         setAvailableSetDates(setsData.availableDates || []);
+      }
+
+      if (settingsRes.ok && Array.isArray(settingsData?.settings?.holidays)) {
+        setHolidays(
+          settingsData.settings.holidays.map((holiday) => ({
+            date: toIsoDate(holiday.date),
+            reason: holiday.reason || "",
+            sessionType: holiday.sessionType,
+          })),
+        );
       }
     } catch {
       toast.error("Failed to load training data");
@@ -395,27 +424,53 @@ export default function TrainingPage() {
             const count = dateCountLookup.get(cellDate) || 0;
             const isSelected = cellDate === selectedDate;
             const hasSet = count > 0;
+            const holidayForDate = holidays.find(
+              (holiday) =>
+                holiday.date === cellDate &&
+                (holiday.sessionType === "none" ||
+                  holiday.sessionType === type),
+            );
 
             return (
               <button
                 key={cellDate}
                 type="button"
                 onClick={() => setSelectedDate(cellDate)}
+                title={
+                  holidayForDate
+                    ? `Holiday: ${holidayForDate.reason || "No reason provided"}`
+                    : undefined
+                }
                 className={`h-20 rounded border p-2 text-left transition ${
                   isSelected
                     ? "border-primary-300 bg-primary-500/10"
-                    : "border-primary-500/20 hover:border-primary-400"
+                    : holidayForDate
+                      ? "border-yellow-500/40 bg-yellow-500/10 hover:border-yellow-500/60"
+                      : "border-primary-500/20 hover:border-primary-400"
                 }`}
               >
-                <p className="text-sm font-semibold text-gray-100">
+                <p className="text-sm font-semibold text-slate-800 dark:text-gray-100">
                   {Number(cellDate.slice(-2))}
                 </p>
+                {holidayForDate && (
+                  <p className="text-[10px] uppercase tracking-wide text-yellow-600 dark:text-yellow-300">
+                    Holiday
+                  </p>
+                )}
                 <p
                   className={`mt-1 text-xs ${
-                    hasSet ? "text-green-300" : "text-gray-500"
+                    hasSet
+                      ? "text-green-300"
+                      : holidayForDate
+                        ? "text-yellow-600 dark:text-yellow-300"
+                        : "text-gray-500"
                   }`}
                 >
-                  {hasSet ? `${count} set${count > 1 ? "s" : ""}` : "No set"}
+                  {hasSet
+                    ? `${count} set${count > 1 ? "s" : ""}`
+                    : holidayForDate
+                      ? "No practice"
+                      : "No set"}
                 </p>
               </button>
             );
