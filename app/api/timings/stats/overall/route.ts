@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
 
     if (!isManager) {
       const settings = await Settings.findOne()
+        .sort({ updatedAt: -1 })
         .select("overallStatsVisible")
         .lean();
       if (!settings?.overallStatsVisible) {
@@ -89,6 +90,24 @@ export async function GET(req: NextRequest) {
       Array<{ userId: string; name: string; gender: string; time: string }>
     > = {};
 
+    const leaderboardByEventGender: Record<
+      string,
+      {
+        men: Array<{
+          userId: string;
+          name: string;
+          gender: string;
+          time: string;
+        }>;
+        women: Array<{
+          userId: string;
+          name: string;
+          gender: string;
+          time: string;
+        }>;
+      }
+    > = {};
+
     for (const timing of timings) {
       const meta = swimmerMeta.get(timing.userId);
       if (!meta) continue;
@@ -106,9 +125,32 @@ export async function GET(req: NextRequest) {
     }
 
     for (const eventName of Object.keys(leaderboardByEvent)) {
-      leaderboardByEvent[eventName] = leaderboardByEvent[eventName]
-        .sort((a, b) => toSeconds(a.time) - toSeconds(b.time))
-        .slice(0, 3);
+      const sorted = leaderboardByEvent[eventName].sort(
+        (a, b) => toSeconds(a.time) - toSeconds(b.time),
+      );
+
+      leaderboardByEvent[eventName] = sorted.slice(0, 3);
+
+      leaderboardByEventGender[eventName] = {
+        men: sorted
+          .filter((row) =>
+            ["male", "m", "men"].includes(
+              String(row.gender || "")
+                .trim()
+                .toLowerCase(),
+            ),
+          )
+          .slice(0, 3),
+        women: sorted
+          .filter((row) =>
+            ["female", "f", "women"].includes(
+              String(row.gender || "")
+                .trim()
+                .toLowerCase(),
+            ),
+          )
+          .slice(0, 3),
+      };
     }
 
     return NextResponse.json({
@@ -118,6 +160,7 @@ export async function GET(req: NextRequest) {
         timingCount: timings.length,
         bySwimmer,
         leaderboardByEvent,
+        leaderboardByEventGender,
       },
     });
   } catch (error) {

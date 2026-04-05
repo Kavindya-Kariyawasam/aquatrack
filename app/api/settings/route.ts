@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 
     await dbConnect();
 
-    let settings = await Settings.findOne().lean();
+    let settings = await Settings.findOne().sort({ updatedAt: -1 }).lean();
 
     if (!settings) {
       settings = await Settings.create({
@@ -148,13 +148,31 @@ export async function PUT(req: NextRequest) {
 
     await dbConnect();
 
-    const settings = await Settings.findOneAndUpdate(
-      {},
-      {
-        $set: updates,
-      },
-      { new: true, upsert: true },
-    ).lean();
+    const latest = await Settings.findOne().sort({ updatedAt: -1 }).lean();
+
+    const settings = latest
+      ? await Settings.findByIdAndUpdate(
+          latest._id,
+          {
+            $set: updates,
+          },
+          { new: true },
+        ).lean()
+      : await Settings.create({
+          statsPageVisible: true,
+          overallStatsVisible: false,
+          weeklySchedule: {
+            monday: "swimming",
+            tuesday: "swimming",
+            wednesday: "none",
+            thursday: "none",
+            friday: "swimming",
+            saturday: "land",
+            sunday: "none",
+          },
+          holidays: [],
+          ...updates,
+        });
 
     return NextResponse.json({ success: true, settings });
   } catch (error) {
