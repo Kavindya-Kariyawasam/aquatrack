@@ -26,6 +26,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<"swimmer" | "coach" | "admin">("swimmer");
   const [userName, setUserName] = useState("Swimmer");
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
     const loadRole = async () => {
@@ -82,8 +83,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-[260px_1fr]">
-      <aside className="border-r border-primary-500/20 bg-white/70 dark:bg-dark-card/40 backdrop-blur-xl p-4 lg:p-6">
+    <div className="min-h-screen flex">
+      <aside
+        className={cn(
+          "border-r border-primary-500/20 bg-white/70 dark:bg-dark-card/40 backdrop-blur-xl transition-all duration-300 overflow-hidden",
+          isSidebarOpen ? "w-[260px] p-4 lg:p-6" : "w-0 p-0 border-r-0",
+        )}
+      >
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-gradient">AquaTrack</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -125,7 +131,18 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </Button>
       </aside>
 
-      <section className="p-4 md:p-8">{children}</section>
+      <section className="flex-1 p-4 md:p-8">
+        <div className="mb-4">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setIsSidebarOpen((prev) => !prev)}
+          >
+            {isSidebarOpen ? "Hide Menu" : "Show Menu"}
+          </Button>
+        </div>
+        {children}
+      </section>
     </div>
   );
 }
