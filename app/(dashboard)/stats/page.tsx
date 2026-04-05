@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Card from "@/components/ui/Card";
-import { formatDate } from "@/lib/utils";
 
 type Role = "swimmer" | "coach" | "admin";
 
@@ -10,15 +9,6 @@ type Stats = {
   totalTimings: number;
   eventsTracked: number;
   bestByEvent: Record<string, string>;
-};
-
-type Announcement = {
-  _id: string;
-  title: string;
-  content: string;
-  priority: "low" | "medium" | "high";
-  createdAt: string;
-  postedByName: string;
 };
 
 type OverallRow = {
@@ -40,7 +30,6 @@ type LeaderboardItem = {
 export default function StatsPage() {
   const [role, setRole] = useState<Role>("swimmer");
   const [stats, setStats] = useState<Stats | null>(null);
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [overallRows, setOverallRows] = useState<OverallRow[]>([]);
   const [leaderboardByEvent, setLeaderboardByEvent] = useState<
     Record<string, LeaderboardItem[]>
@@ -49,16 +38,14 @@ export default function StatsPage() {
 
   useEffect(() => {
     const load = async () => {
-      const [meRes, statsRes, annRes, settingsRes] = await Promise.all([
+      const [meRes, statsRes, settingsRes] = await Promise.all([
         fetch("/api/auth/me"),
         fetch("/api/timings/stats"),
-        fetch("/api/announcements"),
         fetch("/api/settings"),
       ]);
 
       const meData = await meRes.json();
       const statsData = await statsRes.json();
-      const annData = await annRes.json();
       const settingsData = await settingsRes.json();
 
       const currentRole = (meData?.user?.role || "swimmer") as Role;
@@ -66,10 +53,6 @@ export default function StatsPage() {
 
       if (statsRes.ok) {
         setStats(statsData.stats || null);
-      }
-
-      if (annRes.ok) {
-        setAnnouncements(annData.announcements || []);
       }
 
       const canShowOverall =
@@ -157,19 +140,82 @@ export default function StatsPage() {
                   <h3 className="font-semibold text-gray-100 mb-2 capitalize">
                     {eventName}
                   </h3>
-                  <div className="space-y-1 text-sm">
-                    {rows.map((row, index) => (
-                      <div
-                        key={`${eventName}-${row.userId}-${index}`}
-                        className="flex justify-between gap-2"
-                      >
-                        <span className="text-gray-300">
-                          {index + 1}. {row.name}{" "}
-                          {row.gender ? `(${row.gender})` : ""}
-                        </span>
-                        <span className="text-primary-300">{row.time}</span>
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-primary-300 mb-1">
+                        Men
+                      </p>
+                      <div className="space-y-1 text-sm">
+                        {rows
+                          .filter((row) =>
+                            ["male", "m", "men"].includes(
+                              String(row.gender || "")
+                                .trim()
+                                .toLowerCase(),
+                            ),
+                          )
+                          .map((row, index) => (
+                            <div
+                              key={`${eventName}-men-${row.userId}-${index}`}
+                              className="flex justify-between gap-2"
+                            >
+                              <span className="text-gray-300">
+                                {index + 1}. {row.name}
+                              </span>
+                              <span className="text-primary-300">
+                                {row.time}
+                              </span>
+                            </div>
+                          ))}
+                        {rows.filter((row) =>
+                          ["male", "m", "men"].includes(
+                            String(row.gender || "")
+                              .trim()
+                              .toLowerCase(),
+                          ),
+                        ).length === 0 && (
+                          <p className="text-gray-500">No entries</p>
+                        )}
                       </div>
-                    ))}
+                    </div>
+
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-primary-300 mb-1">
+                        Women
+                      </p>
+                      <div className="space-y-1 text-sm">
+                        {rows
+                          .filter((row) =>
+                            ["female", "f", "women"].includes(
+                              String(row.gender || "")
+                                .trim()
+                                .toLowerCase(),
+                            ),
+                          )
+                          .map((row, index) => (
+                            <div
+                              key={`${eventName}-women-${row.userId}-${index}`}
+                              className="flex justify-between gap-2"
+                            >
+                              <span className="text-gray-300">
+                                {index + 1}. {row.name}
+                              </span>
+                              <span className="text-primary-300">
+                                {row.time}
+                              </span>
+                            </div>
+                          ))}
+                        {rows.filter((row) =>
+                          ["female", "f", "women"].includes(
+                            String(row.gender || "")
+                              .trim()
+                              .toLowerCase(),
+                          ),
+                        ).length === 0 && (
+                          <p className="text-gray-500">No entries</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -211,38 +257,6 @@ export default function StatsPage() {
           )}
         </Card>
       )}
-
-      <Card>
-        <h2 className="text-xl font-semibold text-primary-300 mb-3">
-          Announcements
-        </h2>
-        {announcements.length === 0 ? (
-          <p className="text-gray-400">No announcements yet.</p>
-        ) : (
-          <div className="space-y-3">
-            {announcements.map((announcement) => (
-              <div
-                key={announcement._id}
-                className="border border-primary-500/20 rounded-lg p-4"
-              >
-                <div className="flex justify-between items-center gap-3">
-                  <h3 className="font-semibold">{announcement.title}</h3>
-                  <span className="text-xs uppercase tracking-wide text-primary-300">
-                    {announcement.priority}
-                  </span>
-                </div>
-                <p className="text-gray-300 mt-2 whitespace-pre-wrap">
-                  {announcement.content}
-                </p>
-                <p className="text-xs text-gray-500 mt-2">
-                  {announcement.postedByName} ·{" "}
-                  {formatDate(announcement.createdAt)}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
 
       {role !== "swimmer" && (
         <Card>
