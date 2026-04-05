@@ -37,6 +37,7 @@ type SwimmerDetailStats = {
 
 export default function ProgressPage() {
   const [role, setRole] = useState<Role>("swimmer");
+  const [isRoleLoaded, setIsRoleLoaded] = useState(false);
   const [event, setEvent] = useState<SwimmingEvent>(SWIMMING_EVENTS[0]);
   const [time, setTime] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -105,6 +106,8 @@ export default function ProgressPage() {
       }
     } catch {
       toast.error("Failed to load progress data");
+    } finally {
+      setIsRoleLoaded(true);
     }
   };
 
@@ -250,6 +253,17 @@ export default function ProgressPage() {
       setDeletingTimingId(null);
     }
   };
+
+  if (!isRoleLoaded) {
+    return (
+      <div className="space-y-6">
+        <h1 className="section-heading">Progress</h1>
+        <Card>
+          <p className="text-gray-400">Loading progress workspace...</p>
+        </Card>
+      </div>
+    );
+  }
 
   if (isManager) {
     return (
