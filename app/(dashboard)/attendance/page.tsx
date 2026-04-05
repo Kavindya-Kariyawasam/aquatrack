@@ -115,6 +115,7 @@ function toIsoDate(dateLike: Date | string) {
 
 export default function AttendancePage() {
   const [role, setRole] = useState<Role>("swimmer");
+  const [isRoleLoaded, setIsRoleLoaded] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [type, setType] = useState<"swimming" | "land">("swimming");
   const [leaveType, setLeaveType] = useState<keyof typeof LEAVE_TYPES>("exam");
@@ -180,6 +181,8 @@ export default function AttendancePage() {
       }
     } catch {
       toast.error("Failed to load user role");
+    } finally {
+      setIsRoleLoaded(true);
     }
   };
 
@@ -617,6 +620,17 @@ export default function AttendancePage() {
       setIsMarking(false);
     }
   };
+
+  if (!isRoleLoaded) {
+    return (
+      <div className="space-y-6">
+        <h1 className="section-heading">Attendance</h1>
+        <Card>
+          <p className="text-gray-400">Loading attendance workspace...</p>
+        </Card>
+      </div>
+    );
+  }
 
   if (!isManager) {
     return (
