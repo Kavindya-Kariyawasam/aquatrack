@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import { Menu, PanelLeftClose } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
@@ -132,14 +133,16 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       </aside>
 
       <section className="flex-1 p-4 md:p-8">
-        <div className="mb-4">
-          <Button
-            variant="secondary"
-            size="sm"
+        <div className="mb-4 flex items-center">
+          <button
+            type="button"
             onClick={() => setIsSidebarOpen((prev) => !prev)}
+            className="inline-flex items-center justify-center h-10 w-10 rounded-lg border border-primary-500/30 bg-white/70 dark:bg-dark-card/60 text-slate-700 dark:text-gray-200 hover:border-primary-500/60 hover:bg-primary-500/10 transition"
+            aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+            title={isSidebarOpen ? "Collapse menu" : "Expand menu"}
           >
-            {isSidebarOpen ? "Hide Menu" : "Show Menu"}
-          </Button>
+            {isSidebarOpen ? <PanelLeftClose size={18} /> : <Menu size={18} />}
+          </button>
         </div>
         {children}
       </section>
