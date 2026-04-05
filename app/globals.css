@@ -5,8 +5,8 @@
 @layer base {
   :root {
     --foreground-rgb: 15, 23, 42;
-    --background-start-rgb: 239, 246, 255;
-    --background-end-rgb: 248, 250, 252;
+    --background-start-rgb: 248, 244, 236;
+    --background-end-rgb: 242, 237, 227;
   }
 
   .dark {
@@ -47,7 +47,7 @@
 
 @layer components {
   .glass-card {
-    @apply bg-white/80 dark:bg-dark-card/50 text-slate-800 dark:text-gray-100 backdrop-blur-xl border border-slate-200 dark:border-primary-500/20 rounded-xl shadow-glow;
+    @apply bg-amber-50/70 dark:bg-dark-card/50 text-slate-800 dark:text-gray-100 backdrop-blur-xl border border-amber-200/70 dark:border-primary-500/20 rounded-xl shadow-glow;
   }
 
   .glass-card-hover {
