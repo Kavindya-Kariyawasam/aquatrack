@@ -20,6 +20,7 @@ export interface IUser {
     faculty: string;
     batch: number;
     universityId: string;
+    nicNumber: string;
     mainEvents: string[];
     extraEvents: string[];
   };
@@ -89,6 +90,7 @@ const userSchema = new Schema<IUser>(
       },
       batch: { type: Number },
       universityId: { type: String, default: "" },
+      nicNumber: { type: String, default: "" },
       mainEvents: {
         type: [String],
         default: [],

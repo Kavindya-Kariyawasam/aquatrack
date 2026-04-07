@@ -20,6 +20,7 @@ type ProfileState = {
   faculty: string;
   batch: string;
   universityId: string;
+  nicNumber: string;
   mainEvents: string[];
   extraEvents: string[];
 };
@@ -34,6 +35,7 @@ const initialState: ProfileState = {
   faculty: "",
   batch: "",
   universityId: "",
+  nicNumber: "",
   mainEvents: [],
   extraEvents: [],
 };
@@ -71,6 +73,7 @@ export default function ProfilePage() {
           faculty: p.faculty || "",
           batch: p.batch ? String(p.batch) : "",
           universityId: p.universityId || "",
+          nicNumber: p.nicNumber || "",
           mainEvents: Array.isArray(p.mainEvents) ? p.mainEvents : [],
           extraEvents: Array.isArray(p.extraEvents) ? p.extraEvents : [],
         });
@@ -153,6 +156,7 @@ export default function ProfilePage() {
         payload.faculty = profile.faculty;
         payload.batch = profile.batch ? Number(profile.batch) : undefined;
         payload.universityId = profile.universityId;
+        payload.nicNumber = profile.nicNumber;
         payload.mainEvents = profile.mainEvents;
         payload.extraEvents = profile.extraEvents;
       }
@@ -254,6 +258,13 @@ export default function ProfilePage() {
                   updateField("universityId", event.target.value)
                 }
               />
+              <Input
+                label="NIC Number"
+                value={profile.nicNumber}
+                onChange={(event) =>
+                  updateField("nicNumber", event.target.value)
+                }
+              />
             </>
           )}
         </div>
@@ -279,6 +290,10 @@ export default function ProfilePage() {
                   </label>
                 ))}
               </div>
+              <p className="text-xs text-slate-500 dark:text-gray-400 mt-2">
+                Note: Women&apos;s category currently does not include 400
+                freestyle, 200 backstroke, 200 breaststroke, or 200 butterfly.
+              </p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-300 mb-2">

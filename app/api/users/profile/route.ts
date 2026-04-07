@@ -14,6 +14,7 @@ const ALLOWED_FIELDS = [
   "faculty",
   "batch",
   "universityId",
+  "nicNumber",
   "mainEvents",
   "extraEvents",
 ] as const;
@@ -88,6 +89,7 @@ export async function PUT(req: NextRequest) {
       delete updates["profile.faculty"];
       delete updates["profile.batch"];
       delete updates["profile.universityId"];
+      delete updates["profile.nicNumber"];
     }
 
     await dbConnect();

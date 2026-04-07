@@ -14,6 +14,7 @@ type UserItem = {
     gender?: "male" | "female" | "";
     dob?: string;
     universityId?: string;
+    nicNumber?: string;
     faculty?: string;
     batch?: number;
     contact?: string;
@@ -70,6 +71,7 @@ export default function TeamPage() {
                 <th>Full Name</th>
                 <th>DOB</th>
                 <th>ID</th>
+                <th>NIC</th>
                 <th>Faculty</th>
                 <th>Batch</th>
                 <th>Contact</th>
@@ -89,6 +91,7 @@ export default function TeamPage() {
                       : "-"}
                   </td>
                   <td>{user.profile?.universityId || "-"}</td>
+                  <td>{user.profile?.nicNumber || "-"}</td>
                   <td>{user.profile?.faculty || "-"}</td>
                   <td>{user.profile?.batch || "-"}</td>
                   <td>{user.profile?.contact || "-"}</td>
