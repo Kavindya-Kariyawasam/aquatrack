@@ -13,9 +13,20 @@ export async function GET(req: NextRequest) {
 
     await dbConnect();
 
-    const announcements = await Announcement.find()
+    const { searchParams } = new URL(req.url);
+    const status = String(searchParams.get("status") || "all")
+      .trim()
+      .toLowerCase();
+    const limit = Math.min(Number(searchParams.get("limit") || 30), 100);
+
+    const query: Record<string, unknown> = {};
+    if (["active", "cancelled", "completed"].includes(status)) {
+      query.status = status;
+    }
+
+    const announcements = await Announcement.find(query)
       .sort({ createdAt: -1 })
-      .limit(30)
+      .limit(limit)
       .lean();
 
     return NextResponse.json({ success: true, announcements });
