@@ -15,6 +15,7 @@ const navItems = [
   { href: "/training", label: "Training" },
   { href: "/attendance", label: "Attendance" },
   { href: "/stats", label: "Stats" },
+  { href: "/past-results", label: "Past Results" },
   { href: "/announcements", label: "Announcements" },
   { href: "/team", label: "Team" },
   { href: "/admin", label: "Admin" },
@@ -87,7 +88,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen flex">
       <aside
         className={cn(
-          "border-r border-primary-500/20 bg-white/70 dark:bg-dark-card/40 backdrop-blur-xl transition-all duration-300 overflow-hidden",
+          "shrink-0 border-r border-primary-500/20 bg-white/70 dark:bg-dark-card/40 backdrop-blur-xl transition-all duration-300 overflow-hidden",
           isSidebarOpen ? "w-[260px] p-4 lg:p-6" : "w-0 p-0 border-r-0",
         )}
       >
@@ -132,7 +133,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </Button>
       </aside>
 
-      <section className="flex-1 p-4 md:p-8">
+      <section className="flex-1 min-w-0 p-4 md:p-8">
         <div className="mb-4 flex items-center">
           <button
             type="button"
