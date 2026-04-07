@@ -58,7 +58,7 @@ export default function DashboardPage() {
           fetch("/api/timings/stats"),
           fetch("/api/attendance"),
           fetch("/api/training-sets?limit=1"),
-          fetch("/api/announcements"),
+          fetch("/api/announcements?status=active&limit=3"),
           fetch("/api/users"),
         ]);
 
@@ -82,9 +82,7 @@ export default function DashboardPage() {
           announcementsCount: announcementsData?.announcements?.length || 0,
         });
 
-        setRecentAnnouncements(
-          (announcementsData?.announcements || []).slice(0, 3),
-        );
+        setRecentAnnouncements(announcementsData?.announcements || []);
       } catch {
         // no-op
       }
