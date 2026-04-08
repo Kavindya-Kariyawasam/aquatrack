@@ -1,31 +1,28 @@
 # AquaTrack
 
-AquaTrack is a swimming team management platform for the University of Moratuwa team.
+AquaTrack is a role-based swimming team management system built for the University of Moratuwa team.
 
-## Stack
+## Tech Stack
 
-- Next.js (App Router) + TypeScript
-- MongoDB + Mongoose
-- JWT auth with HTTP-only cookie
-- Google Gemini for AI training-set generation
-- Tailwind CSS + reusable UI primitives
+- Next.js (App Router) with TypeScript
+- MongoDB with Mongoose
+- JWT authentication via HTTP-only cookies
+- Tailwind CSS UI with reusable components
+- Google Gemini integration for training set generation
 
-## Initial bootstrap commands used
+## Core Features
 
-```bash
-npx create-next-app@latest . --typescript --tailwind --app --no-src-dir --import-alias "@/*"
+- Authentication and account approval workflow
+- Role-based access for swimmer, coach, and admin
+- Profile management and swimmer event preferences
+- Timing and progress tracking
+- Attendance with leave request approval flow
+- Team and statistics dashboards
+- Announcement publishing, status updates, and editing
+- Training set posting, generation, and private set requests
+- Past meet results viewer from static CSV data
 
-# Core backend
-npm install mongoose jsonwebtoken bcryptjs @google/generative-ai
-
-# UI + utils
-npm install lucide-react recharts react-hot-toast date-fns framer-motion clsx tailwind-merge tesseract.js
-
-# Types
-npm install -D @types/jsonwebtoken @types/bcryptjs
-```
-
-## Local setup
+## Project Setup
 
 1. Install dependencies
 
@@ -33,17 +30,17 @@ npm install -D @types/jsonwebtoken @types/bcryptjs
 npm install
 ```
 
-2. Create env file from template
+2. Create local environment file
 
 ```bash
 cp .env.example .env.local
 ```
 
-3. Fill `.env.local`
+3. Configure environment variables
 
 ```env
 MONGODB_URI=your_mongodb_connection_string
-JWT_SECRET=your_generated_jwt_secret
+JWT_SECRET=your_long_random_secret_min_32_chars
 GOOGLE_AI_API_KEY=your_google_ai_api_key
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ALLOWED_EMAIL_DOMAIN=
@@ -55,13 +52,18 @@ SMTP_PASS=
 SMTP_FROM=
 ```
 
-4. Run dev server
+4. Run development server
 
 ```bash
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+5. Validate production readiness locally
+
+```bash
+npm run lint
+npm run build
+```
 
 ## Scripts
 
@@ -73,68 +75,70 @@ npm run lint
 npm run admin:bootstrap -- --email captain@uom.lk --password StrongPass123 --name "Team Captain"
 ```
 
-## Current Routes
+## Role Access Summary
 
-- `/login` - Sign in
-- `/register` - Create account
-- `/forgot-password` - Generate reset token/link
-- `/reset-password` - Set a new password using reset token
-- `/dashboard` - Protected home
-- `/profile`, `/progress`, `/training`, `/attendance`, `/stats`, `/admin` - Protected module pages
+- Swimmer:
+  - Track timings and progress
+  - View assigned/public training sets
+  - Submit attendance leave requests
+  - View announcements and team stats (based on settings)
 
-## Create first admin user
+- Coach:
+  - Manage attendance and training sets
+  - Post and edit announcements
+  - View team and stats pages
+  - Manage swimmer set requests
 
-After setting `.env.local` and running `npm install`, run:
+- Admin:
+  - All coach permissions
+  - User approval and role assignment
+  - System settings management
+
+## Main App Routes
+
+- Public:
+  - /login
+  - /register
+  - /forgot-password
+  - /reset-password
+
+- Protected:
+  - /dashboard
+  - /profile
+  - /progress
+  - /training
+  - /attendance
+  - /stats
+  - /past-results
+  - /announcements
+  - /team
+  - /admin
+
+## Initial Admin Bootstrap
+
+After setting environment variables and running npm install:
 
 ```bash
 npm run admin:bootstrap -- --email captain@uom.lk --password StrongPass123 --name "Team Captain"
 ```
 
-What it does:
-
-- If user exists: promotes to `admin` (and updates password if provided)
-- If user does not exist: creates a new `admin` user
-
-## Account and approval workflow
-
-- Admin account: create manually with `npm run admin:bootstrap ...`
-- Swimmer accounts: self-register from `/register` (default role is `swimmer`)
-- Swimmer login: blocked until approved by admin
-- Coach account: create by either:
-  - Registering first, then set role to `coach` from Admin > Users
-  - Or bootstrap/create as admin first and then downgrade role to `coach` from Admin > Users
-
-## Email restriction with exceptions
-
-To allow only `@uom.lk` plus a few specific non-uom emails:
-
-```env
-ALLOWED_EMAIL_DOMAIN=uom.lk
-ALLOWED_EMAIL_EXCEPTIONS=youradmin@gmail.com,coach1@gmail.com
-```
-
 Behavior:
 
-- Any `@uom.lk` email is allowed
-- Only explicitly listed non-uom emails are allowed
-- Other Gmail (or other domains) are blocked
+- If user already exists, role is updated to admin.
+- If user does not exist, a new admin account is created.
 
-## Commands to run and verify
+## Deployment (Vercel)
 
-```bash
-# 1) install
-npm install
+1. Push the repository to GitHub.
+2. Import the project into Vercel.
+3. Add all required environment variables in Vercel Project Settings.
+4. Do not commit .env.local.
+5. Deploy and verify critical flows (login, dashboard, role-protected actions).
 
-# 2) quality checks
-npm run lint
-npm run build
+## Security Notes
 
-# 3) start dev server
-npm run dev
-```
-
-## Notes
-
-- `.env.local` is intentionally gitignored.
-- `COPILOT_INSTRUCTIONS.md` is local-only and gitignored.
-- AI-generated training sets are **not** persisted automatically.
+- Secrets are safe from source exposure if kept only in Vercel environment variables and never committed.
+- API authorization is enforced server-side using JWT and role checks.
+- UI hiding alone is not trusted for security; server routes still validate permissions.
+- Login and register routes include request rate limiting.
+- Passwords are hashed with bcrypt.
