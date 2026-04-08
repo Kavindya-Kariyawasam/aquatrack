@@ -3,10 +3,36 @@ import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import User from "@/models/User";
-import { isStrongPassword, sanitizeText } from "@/lib/security";
+import {
+  createRateLimiter,
+  getRequestIdentifier,
+  isStrongPassword,
+  sanitizeText,
+} from "@/lib/security";
+
+const resetLimiter = createRateLimiter({
+  maxRequests: 8,
+  windowMs: 60_000,
+});
 
 export async function POST(req: NextRequest) {
   try {
+    const clientId = getRequestIdentifier(req);
+    const limit = resetLimiter(clientId);
+
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { error: "Too many reset attempts. Try again shortly." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(limit.retryAfterSeconds),
+            "Cache-Control": "no-store",
+          },
+        },
+      );
+    }
+
     const { token, password } = await req.json();
 
     const rawToken = sanitizeText(token, 256);
@@ -17,7 +43,7 @@ export async function POST(req: NextRequest) {
         {
           error: "Token and a strong password are required",
         },
-        { status: 400 },
+        { status: 400, headers: { "Cache-Control": "no-store" } },
       );
     }
 
@@ -33,7 +59,7 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return NextResponse.json(
         { error: "Invalid or expired reset token" },
-        { status: 400 },
+        { status: 400, headers: { "Cache-Control": "no-store" } },
       );
     }
 
@@ -42,15 +68,20 @@ export async function POST(req: NextRequest) {
     user.resetPasswordExpires = undefined;
     await user.save();
 
-    return NextResponse.json({
-      success: true,
-      message: "Password reset successful. You can now sign in.",
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Password reset successful. You can now sign in.",
+      },
+      {
+        headers: { "Cache-Control": "no-store" },
+      },
+    );
   } catch (error) {
     console.error("Reset password error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 },
+      { status: 500, headers: { "Cache-Control": "no-store" } },
     );
   }
 }

@@ -22,6 +22,25 @@ type ProxyUser = {
   role: "swimmer" | "coach" | "admin";
 };
 
+function withSecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=()",
+  );
+
+  if (process.env.NODE_ENV === "production") {
+    response.headers.set(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains; preload",
+    );
+  }
+
+  return response;
+}
+
 async function verifyEdgeToken(token: string): Promise<ProxyUser | null> {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
@@ -60,17 +79,21 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (publicRoutes.some((route) => pathname.startsWith(route))) {
-    return NextResponse.next();
+    return withSecurityHeaders(NextResponse.next());
   }
 
   const token = request.cookies.get("token")?.value;
 
   if (!token) {
     if (!pathname.startsWith("/api/")) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      return withSecurityHeaders(
+        NextResponse.redirect(new URL("/login", request.url)),
+      );
     }
 
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return withSecurityHeaders(
+      NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+    );
   }
 
   const user = await verifyEdgeToken(token);
@@ -81,20 +104,22 @@ export async function proxy(request: NextRequest) {
       : NextResponse.redirect(new URL("/login", request.url));
 
     response.cookies.delete("token");
-    return response;
+    return withSecurityHeaders(response);
   }
 
   if (
     adminRoutes.some((route) => pathname.startsWith(route)) &&
     user.role !== "admin"
   ) {
-    return pathname.startsWith("/api/")
+    const response = pathname.startsWith("/api/")
       ? NextResponse.json({ error: "Forbidden - Admin only" }, { status: 403 })
       : NextResponse.redirect(new URL("/dashboard", request.url));
+
+    return withSecurityHeaders(response);
   }
 
   if (selfAllowedRoutes.some((route) => pathname.startsWith(route))) {
-    return NextResponse.next();
+    return withSecurityHeaders(NextResponse.next());
   }
 
   if (
@@ -102,15 +127,17 @@ export async function proxy(request: NextRequest) {
     user.role !== "coach" &&
     user.role !== "admin"
   ) {
-    return pathname.startsWith("/api/")
+    const response = pathname.startsWith("/api/")
       ? NextResponse.json(
           { error: "Forbidden - Coach or Admin only" },
           { status: 403 },
         )
       : NextResponse.redirect(new URL("/dashboard", request.url));
+
+    return withSecurityHeaders(response);
   }
 
-  return NextResponse.next();
+  return withSecurityHeaders(NextResponse.next());
 }
 
 export const config = {
