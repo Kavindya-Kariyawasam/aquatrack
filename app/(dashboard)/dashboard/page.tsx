@@ -189,11 +189,11 @@ export default function DashboardPage() {
                   href="/announcements"
                   className="block border border-primary-500/20 rounded-lg p-3 hover:bg-primary-500/5 transition-colors duration-150"
                 >
-                  <div className="flex justify-between items-center gap-2">
-                    <span className="font-medium text-slate-900 dark:text-white hover:text-primary-300">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                    <span className="min-w-0 font-medium text-slate-900 dark:text-white hover:text-primary-300 break-words">
                       {announcement.title}
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       {announcement.editedAt && (
                         <span className="text-xs text-slate-500 dark:text-gray-500 uppercase tracking-wide">
                           Edited

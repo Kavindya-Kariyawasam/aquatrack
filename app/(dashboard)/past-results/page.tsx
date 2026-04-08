@@ -65,7 +65,7 @@ export default function PastResultsPage() {
       try {
         const [meRes, csvRes] = await Promise.all([
           fetch("/api/auth/me"),
-          fetch("/data/SLUG2025.csv", { cache: "no-store" }),
+          fetch("/data/SLUG2025.csv"),
         ]);
 
         const meData = (await meRes.json()) as AuthMePayload;
