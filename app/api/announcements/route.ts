@@ -156,3 +156,73 @@ export async function PATCH(req: NextRequest) {
     );
   }
 }
+
+export async function PUT(req: NextRequest) {
+  try {
+    const authUser = getUserFromRequest(req);
+    if (!authUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (authUser.role !== "admin" && authUser.role !== "coach") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const body = await req.json();
+    const announcementId = String(body.announcementId || "").trim();
+    const title = String(body.title || "").trim();
+    const content = String(body.content || "").trim();
+    const priority = String(body.priority || "")
+      .trim()
+      .toLowerCase();
+
+    if (!announcementId) {
+      return NextResponse.json(
+        { error: "announcementId is required" },
+        { status: 400 },
+      );
+    }
+
+    if (!title || !content) {
+      return NextResponse.json(
+        { error: "Title and content are required" },
+        { status: 400 },
+      );
+    }
+
+    if (!["low", "medium", "high"].includes(priority)) {
+      return NextResponse.json({ error: "Invalid priority" }, { status: 400 });
+    }
+
+    await dbConnect();
+
+    const updated = await Announcement.findByIdAndUpdate(
+      announcementId,
+      {
+        $set: {
+          title,
+          content,
+          priority,
+          editedBy: authUser.userId,
+          editedAt: new Date(),
+        },
+      },
+      { new: true },
+    ).lean();
+
+    if (!updated) {
+      return NextResponse.json(
+        { error: "Announcement not found" },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({ success: true, announcement: updated });
+  } catch (error) {
+    console.error("Announcements PUT error:", error);
+    return NextResponse.json(
+      { error: "Failed to edit announcement" },
+      { status: 500 },
+    );
+  }
+}

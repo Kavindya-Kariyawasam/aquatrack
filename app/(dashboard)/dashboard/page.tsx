@@ -29,7 +29,13 @@ export default function DashboardPage() {
     announcementsCount: 0,
   });
   const [recentAnnouncements, setRecentAnnouncements] = useState<
-    { _id: string; title: string; createdAt: string; priority: string }[]
+    {
+      _id: string;
+      title: string;
+      createdAt: string;
+      priority: string;
+      editedAt?: string;
+    }[]
   >([]);
 
   useEffect(() => {
@@ -178,25 +184,30 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-3">
               {recentAnnouncements.map((announcement) => (
-                <div
+                <Link
                   key={announcement._id}
-                  className="border border-primary-500/20 rounded-lg p-3"
+                  href="/announcements"
+                  className="block border border-primary-500/20 rounded-lg p-3 hover:bg-primary-500/5 transition-colors duration-150"
                 >
                   <div className="flex justify-between items-center gap-2">
-                    <Link
-                      href="/announcements"
-                      className="font-medium text-white hover:text-primary-300"
-                    >
+                    <span className="font-medium text-slate-900 dark:text-white hover:text-primary-300">
                       {announcement.title}
-                    </Link>
-                    <span className="text-xs text-primary-300 capitalize">
-                      {announcement.priority}
                     </span>
+                    <div className="flex items-center gap-2">
+                      {announcement.editedAt && (
+                        <span className="text-xs text-slate-500 dark:text-gray-500 uppercase tracking-wide">
+                          Edited
+                        </span>
+                      )}
+                      <span className="text-xs text-primary-300 capitalize">
+                        {announcement.priority}
+                      </span>
+                    </div>
                   </div>
                   <p className="text-xs text-gray-400 mt-1">
                     {formatDate(announcement.createdAt)}
                   </p>
-                </div>
+                </Link>
               ))}
             </div>
           )}

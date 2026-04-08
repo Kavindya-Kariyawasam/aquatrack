@@ -8,6 +8,8 @@ export interface IAnnouncement {
   postedByName: string;
   priority: "low" | "medium" | "high";
   status: "active" | "cancelled" | "completed";
+  editedBy?: string;
+  editedAt?: Date;
   cancelledBy?: string;
   cancelledAt?: Date;
   completedBy?: string;
@@ -43,6 +45,13 @@ const announcementSchema = new Schema<IAnnouncement>(
       type: String,
       enum: ["active", "cancelled", "completed"],
       default: "active",
+    },
+    editedBy: {
+      type: String,
+      default: "",
+    },
+    editedAt: {
+      type: Date,
     },
     cancelledBy: {
       type: String,
