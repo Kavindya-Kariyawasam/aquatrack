@@ -3,12 +3,33 @@ import dbConnect from "@/lib/mongodb";
 import TrainingSet from "@/models/TrainingSet";
 import { generateTrainingSet, checkRateLimit } from "@/lib/gemini";
 import { getUserFromRequest } from "@/lib/jwt";
+import { createRateLimiter, getRequestIdentifier } from "@/lib/security";
+
+const generateSetLimiter = createRateLimiter({
+  maxRequests: 5,
+  windowMs: 60_000,
+});
 
 export async function POST(req: NextRequest) {
   try {
     const user = getUserFromRequest(req);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const clientId = getRequestIdentifier(req);
+    const limit = generateSetLimiter(clientId);
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { error: "Too many AI generation requests. Please wait a bit." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(limit.retryAfterSeconds),
+            "Cache-Control": "no-store",
+          },
+        },
+      );
     }
 
     if (!checkRateLimit()) {
