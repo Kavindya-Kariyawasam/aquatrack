@@ -110,6 +110,14 @@ const WEEKDAY_LOOKUP = [
 ] as const;
 
 function toIsoDate(dateLike: Date | string) {
+  if (typeof dateLike === "string") {
+    const trimmed = dateLike.trim();
+    const datePrefixMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (datePrefixMatch) {
+      return datePrefixMatch[1];
+    }
+  }
+
   return new Date(dateLike).toISOString().slice(0, 10);
 }
 
@@ -310,7 +318,7 @@ export default function AttendancePage() {
         setHolidays(
           data.settings.holidays
             .map((holiday) => ({
-              date: new Date(holiday.date).toISOString().slice(0, 10),
+              date: toIsoDate(holiday.date),
               reason: holiday.reason || "",
               sessionType: holiday.sessionType,
             }))
@@ -1370,7 +1378,13 @@ export default function AttendancePage() {
                 >
                   <div className="text-sm">
                     <p className="text-slate-800 dark:text-gray-100">
-                      {holiday.date} ({holiday.sessionType})
+                      {holiday.date} (
+                      {holiday.sessionType === "none"
+                        ? "General / All Sessions"
+                        : holiday.sessionType === "swimming"
+                          ? "Swimming"
+                          : "Land"}
+                      )
                     </p>
                     <p className="text-slate-600 dark:text-gray-400">
                       {holiday.reason || "-"}

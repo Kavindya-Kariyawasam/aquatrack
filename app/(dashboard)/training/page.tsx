@@ -42,6 +42,14 @@ type SettingsResponse = {
 };
 
 function toIsoDate(value: Date | string): string {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    const datePrefixMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (datePrefixMatch) {
+      return datePrefixMatch[1];
+    }
+  }
+
   return new Date(value).toISOString().slice(0, 10);
 }
 
@@ -373,6 +381,10 @@ export default function TrainingPage() {
 
   return (
     <div className="space-y-6">
+      <p className="mt-3 text-sm text-slate-600 dark:text-gray-400">
+        Training Type applies to this whole page: calendar view, posted sets,
+        requests, and AI generation.
+      </p>
       <h1 className="section-heading">Training</h1>
 
       <Card>
@@ -474,7 +486,12 @@ export default function TrainingPage() {
               <button
                 key={cellDate}
                 type="button"
-                onClick={() => setSelectedDate(cellDate)}
+                onClick={() => {
+                  setSelectedDate(cellDate);
+                  if (canManageSets) {
+                    setPostDate(cellDate);
+                  }
+                }}
                 title={
                   holidayForDate
                     ? `Holiday: ${holidayForDate.reason || "No reason provided"}`

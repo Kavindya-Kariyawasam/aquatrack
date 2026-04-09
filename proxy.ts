@@ -12,7 +12,7 @@ const publicRoutes = [
   "/api/auth/forgot-password",
   "/api/auth/reset-password",
 ];
-const adminRoutes = ["/admin", "/api/settings", "/api/export"];
+const adminRoutes = ["/admin", "/api/export"];
 const coachOrAdminRoutes = ["/api/users", "/team", "/api/attendance/approve"];
 const selfAllowedRoutes = ["/api/users/profile"];
 
