@@ -302,7 +302,7 @@ export default function AdminPage() {
           </div>
         </Card>
 
-        <Card>
+        <Card id="publish-announcement">
           <h2 className="text-xl font-semibold text-primary-300 mb-3">
             Publish Announcement
           </h2>

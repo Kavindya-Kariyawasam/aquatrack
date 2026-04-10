@@ -118,7 +118,7 @@ export default function DashboardPage() {
           { href: "/admin", label: "Review Approvals" },
           { href: "/attendance", label: "Manage Attendance" },
           { href: "/stats", label: "View Team Stats" },
-          { href: "/announcements", label: "Post Announcement" },
+          { href: "/admin#publish-announcement", label: "Post Announcement" },
           { href: "/team", label: "View Team" },
           { href: "/training", label: "Manage Sets" },
         ]
