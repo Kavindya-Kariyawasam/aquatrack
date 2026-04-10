@@ -9,11 +9,39 @@ if (!API_KEY) {
 }
 
 const genAI = new GoogleGenerativeAI(API_KEY);
+const TRAINING_SET_MODELS = [
+  "gemini-2.5-flash",
+  "gemini-flash-latest",
+  "gemini-flash-lite-latest",
+];
 
 export interface GenerateSetOptions {
   type: "swimming" | "land";
   focus?: string;
   previousSets: string[]; // REQUIRED: Recent sets for learning style
+}
+
+const TEMPORARY_AI_ERROR = "AI_TEMPORARILY_UNAVAILABLE";
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isTemporaryGeminiFailure(error: unknown): boolean {
+  const candidate = error as { message?: string; status?: number };
+  const message = String(candidate?.message || "").toLowerCase();
+
+  return (
+    candidate?.status === 429 ||
+    candidate?.status === 503 ||
+    message.includes("429") ||
+    message.includes("503") ||
+    message.includes("resource_exhausted") ||
+    message.includes("quota") ||
+    message.includes("service unavailable") ||
+    message.includes("high demand") ||
+    message.includes("temporar")
+  );
 }
 
 export async function generateTrainingSet(
@@ -22,8 +50,6 @@ export async function generateTrainingSet(
   if (!API_KEY) {
     throw new Error("Google AI API key is not configured");
   }
-
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   const { type, focus, previousSets } = options;
 
@@ -66,17 +92,50 @@ Type: ${type === "swimming" ? "Swimming Pool Training" : "Land/Dryland Training"
 
 Generate the training set now:`;
 
-  try {
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
+  let sawTemporaryFailure = false;
+  let lastError: unknown = null;
 
-    return text;
-  } catch (error) {
-    console.error("Error generating training set:", error);
-    throw new Error("Failed to generate training set. Please try again.");
+  for (const modelName of TRAINING_SET_MODELS) {
+    const model = genAI.getGenerativeModel({ model: modelName });
+    const maxAttemptsPerModel = 2;
+
+    for (let attempt = 1; attempt <= maxAttemptsPerModel; attempt += 1) {
+      try {
+        const result = await model.generateContent(prompt);
+        const response = result.response;
+        const text = response.text();
+
+        return text;
+      } catch (error) {
+        lastError = error;
+        const isTemporary = isTemporaryGeminiFailure(error);
+        if (isTemporary) {
+          sawTemporaryFailure = true;
+        }
+
+        const shouldRetrySameModel =
+          isTemporary && attempt < maxAttemptsPerModel;
+        if (shouldRetrySameModel) {
+          const backoffMs = 500 * 2 ** (attempt - 1);
+          await wait(backoffMs);
+          continue;
+        }
+
+        // Fall through to next model candidate.
+        break;
+      }
+    }
   }
+
+  console.error("Error generating training set:", lastError);
+  if (sawTemporaryFailure) {
+    throw new Error(TEMPORARY_AI_ERROR);
+  }
+
+  throw new Error("Failed to generate training set. Please try again.");
 }
+
+export { TEMPORARY_AI_ERROR };
 
 export async function improveSetDescription(
   originalSet: string,

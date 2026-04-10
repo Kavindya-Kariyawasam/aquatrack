@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import TrainingSet from "@/models/TrainingSet";
-import { generateTrainingSet, checkRateLimit } from "@/lib/gemini";
+import {
+  generateTrainingSet,
+  checkRateLimit,
+  TEMPORARY_AI_ERROR,
+} from "@/lib/gemini";
 import { getUserFromRequest } from "@/lib/jwt";
 import { createRateLimiter, getRequestIdentifier } from "@/lib/security";
 
@@ -82,6 +86,17 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("Generate set error:", error);
+
+    if (error instanceof Error && error.message === TEMPORARY_AI_ERROR) {
+      return NextResponse.json(
+        {
+          error:
+            "AI service is currently under high demand. Please try again in a minute.",
+        },
+        { status: 503, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+
     return NextResponse.json(
       { error: "Failed to generate training set" },
       { status: 500 },
