@@ -33,6 +33,7 @@ type SetRequest = {
 
 type SettingsResponse = {
   settings?: {
+    aiGenerationEnabled?: boolean;
     holidays?: Array<{
       date: string;
       reason?: string;
@@ -115,6 +116,7 @@ export default function TrainingPage() {
       sessionType: "swimming" | "land" | "none";
     }>
   >([]);
+  const [aiGenerationEnabled, setAiGenerationEnabled] = useState(true);
 
   const canManageSets = useMemo(
     () => role === "coach" || role === "admin",
@@ -163,6 +165,12 @@ export default function TrainingPage() {
             reason: holiday.reason || "",
             sessionType: holiday.sessionType,
           })),
+        );
+      }
+
+      if (settingsRes.ok) {
+        setAiGenerationEnabled(
+          settingsData?.settings?.aiGenerationEnabled !== false,
         );
       }
     } catch {
@@ -415,13 +423,27 @@ export default function TrainingPage() {
         </div>
 
         <div className="mt-4 flex gap-3 flex-wrap">
-          <Button onClick={onGenerateSet} isLoading={isGenerating}>
+          <Button
+            onClick={onGenerateSet}
+            isLoading={isGenerating}
+            disabled={!aiGenerationEnabled}
+          >
             Generate AI Set
           </Button>
-          <Button variant="secondary" onClick={() => setGenerated("")}>
+          <Button
+            variant="secondary"
+            onClick={() => setGenerated("")}
+            disabled={!aiGenerationEnabled}
+          >
             Clear Generated
           </Button>
         </div>
+
+        {!aiGenerationEnabled && (
+          <p className="mt-2 text-sm text-sky-700 dark:text-sky-300">
+            AI set generation is currently disabled by admin.
+          </p>
+        )}
 
         {generated && (
           <div className="mt-4">

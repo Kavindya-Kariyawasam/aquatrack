@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
       settings = await Settings.create({
         statsPageVisible: true,
         overallStatsVisible: false,
+        aiGenerationEnabled: true,
         weeklySchedule: {
           monday: "swimming",
           tuesday: "swimming",
@@ -84,6 +85,10 @@ export async function PUT(req: NextRequest) {
 
     if ("overallStatsVisible" in body) {
       updates.overallStatsVisible = Boolean(body.overallStatsVisible);
+    }
+
+    if ("aiGenerationEnabled" in body) {
+      updates.aiGenerationEnabled = Boolean(body.aiGenerationEnabled);
     }
 
     if (body.weeklySchedule && typeof body.weeklySchedule === "object") {
@@ -161,6 +166,7 @@ export async function PUT(req: NextRequest) {
       : await Settings.create({
           statsPageVisible: true,
           overallStatsVisible: false,
+          aiGenerationEnabled: true,
           weeklySchedule: {
             monday: "swimming",
             tuesday: "swimming",

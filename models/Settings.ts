@@ -4,6 +4,7 @@ export interface ISettings {
   _id: string;
   statsPageVisible: boolean;
   overallStatsVisible: boolean;
+  aiGenerationEnabled: boolean;
   weeklySchedule: {
     monday: "swimming" | "land" | "none";
     tuesday: "swimming" | "land" | "none";
@@ -32,6 +33,10 @@ const settingsSchema = new Schema<ISettings>(
     overallStatsVisible: {
       type: Boolean,
       default: false,
+    },
+    aiGenerationEnabled: {
+      type: Boolean,
+      default: true,
     },
     weeklySchedule: {
       monday: {

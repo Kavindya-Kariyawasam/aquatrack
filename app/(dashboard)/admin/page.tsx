@@ -44,6 +44,7 @@ export default function AdminPage() {
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [overallStatsVisible, setOverallStatsVisible] = useState(false);
+  const [aiGenerationEnabled, setAiGenerationEnabled] = useState(true);
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -85,6 +86,9 @@ export default function AdminPage() {
         setOverallStatsVisible(
           Boolean(settingsData?.settings?.overallStatsVisible),
         );
+        setAiGenerationEnabled(
+          settingsData?.settings?.aiGenerationEnabled !== false,
+        );
       }
 
       if (announcementsRes.ok) {
@@ -105,7 +109,7 @@ export default function AdminPage() {
       const response = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ overallStatsVisible }),
+        body: JSON.stringify({ overallStatsVisible, aiGenerationEnabled }),
       });
 
       const data = await response.json();
@@ -285,6 +289,7 @@ export default function AdminPage() {
             Application Settings
           </h2>
           <Select
+            className="mb-2"
             label="Team Overall Stats (for swimmers)"
             value={overallStatsVisible ? "visible" : "hidden"}
             onChange={(e) =>
@@ -293,6 +298,17 @@ export default function AdminPage() {
             options={[
               { value: "visible", label: "Visible" },
               { value: "hidden", label: "Hidden" },
+            ]}
+          />
+          <Select
+            label="AI Set Generation"
+            value={aiGenerationEnabled ? "enabled" : "disabled"}
+            onChange={(e) =>
+              setAiGenerationEnabled(e.target.value === "enabled")
+            }
+            options={[
+              { value: "enabled", label: "Enabled" },
+              { value: "disabled", label: "Disabled" },
             ]}
           />
           <div className="mt-4">
