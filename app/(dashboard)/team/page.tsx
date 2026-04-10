@@ -102,8 +102,8 @@ export default function TeamPage() {
                         <span
                           className={`text-xs px-2 py-1 rounded ${
                             eventTag(user, event) === "Main"
-                              ? "bg-primary-500/20 text-primary-200"
-                              : "bg-yellow-500/20 text-yellow-200"
+                              ? "bg-sky-100 text-sky-800 dark:bg-primary-500/20 dark:text-primary-200"
+                              : "bg-amber-100 text-amber-800 dark:bg-yellow-500/20 dark:text-yellow-200"
                           }`}
                         >
                           {eventTag(user, event)}

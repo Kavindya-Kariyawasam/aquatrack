@@ -538,10 +538,10 @@ export default function TrainingPage() {
                 <p
                   className={`mt-1 text-xs ${
                     hasSet
-                      ? "text-green-300"
+                      ? "inline-block rounded px-1.5 py-0.5 font-semibold bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-green-300"
                       : holidayForDate
-                        ? "text-yellow-600 dark:text-yellow-300"
-                        : "text-gray-500"
+                        ? "inline-block rounded px-1.5 py-0.5 bg-yellow-100 text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-300"
+                        : "inline-block rounded px-1.5 py-0.5 bg-slate-100 text-slate-700 dark:bg-slate-700/40 dark:text-gray-300"
                   }`}
                 >
                   {hasSet

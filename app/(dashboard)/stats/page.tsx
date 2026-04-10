@@ -162,7 +162,9 @@ export default function StatsPage() {
                     key={event}
                     className="flex justify-between gap-3 border-b border-primary-500/20 pb-2"
                   >
-                    <span className="text-gray-300 capitalize">{event}</span>
+                    <span className="text-slate-700 dark:text-gray-300 capitalize">
+                      {event}
+                    </span>
                     <span className="text-primary-300 font-medium">{best}</span>
                   </div>
                 ))}
@@ -231,7 +233,7 @@ export default function StatsPage() {
                             key={`spotlight-${eventName}-${row.userId}-${index}`}
                             className="flex justify-between gap-2"
                           >
-                            <span className="text-gray-300">
+                            <span className="text-slate-700 dark:text-gray-300">
                               {index + 1}. {row.name}
                             </span>
                             <span className="text-primary-300">{row.time}</span>
@@ -261,7 +263,7 @@ export default function StatsPage() {
                   key={eventName}
                   className="border border-primary-500/20 rounded-lg p-3"
                 >
-                  <h3 className="font-semibold text-gray-100 mb-2 capitalize">
+                  <h3 className="font-semibold text-slate-800 dark:text-gray-100 mb-2 capitalize">
                     {eventName}
                   </h3>
                   {(() => {
@@ -294,7 +296,7 @@ export default function StatsPage() {
                                 key={`${eventName}-men-${row.userId}-${index}`}
                                 className="flex justify-between gap-2"
                               >
-                                <span className="text-gray-300">
+                                <span className="text-slate-700 dark:text-gray-300">
                                   {index + 1}. {row.name}
                                 </span>
                                 <span className="text-primary-300">
@@ -318,7 +320,7 @@ export default function StatsPage() {
                                 key={`${eventName}-women-${row.userId}-${index}`}
                                 className="flex justify-between gap-2"
                               >
-                                <span className="text-gray-300">
+                                <span className="text-slate-700 dark:text-gray-300">
                                   {index + 1}. {row.name}
                                 </span>
                                 <span className="text-primary-300">
