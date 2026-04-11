@@ -39,6 +39,9 @@ yarn-error.log*
 # local instructions
 COPILOT_INSTRUCTIONS.md
 
+# local ops scripts
+scripts/bootstrap-admin.mjs
+
 # vercel
 .vercel
 
