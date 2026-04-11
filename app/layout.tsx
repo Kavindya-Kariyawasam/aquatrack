@@ -31,9 +31,9 @@ export default function RootLayout({
             })();`}
         </Script>
       </head>
-      <body className={inter.className}>
+      <body className={`${inter.className} pb-14`}>
         {children}
-        <footer className="px-4 py-4 text-center text-xs text-slate-600 dark:text-gray-400 border-t border-slate-200/70 dark:border-primary-500/20 bg-white/70 dark:bg-dark-card/40 backdrop-blur-sm">
+        <footer className="fixed bottom-0 inset-x-0 z-40 px-4 py-3 text-center text-xs text-slate-600 dark:text-gray-400 border-t border-slate-200/70 dark:border-primary-500/20 bg-white/85 dark:bg-dark-card/60 backdrop-blur-sm">
           © {year} Nexivo Labs. All rights reserved.
         </footer>
         <Toaster
