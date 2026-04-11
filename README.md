@@ -142,3 +142,15 @@ Behavior:
 - UI hiding alone is not trusted for security; server routes still validate permissions.
 - Login and register routes include request rate limiting.
 - Passwords are hashed with bcrypt.
+
+## Ownership and Usage Notice
+
+- Project owner: Nexivo Labs (GitHub organization)
+- Original creator account: kavinyda-kariyawasam
+- Copyright (c) 2026 Nexivo Labs. All rights reserved.
+
+This repository is published publicly for deployment and collaboration convenience.
+Source visibility does not grant permission to copy, reuse, redistribute, rebrand, or create derivative commercial/academic products from this codebase without explicit written permission from Nexivo Labs.
+
+If you need usage rights, integration rights, or collaboration approval, contact
+Nexivo Labs first.
