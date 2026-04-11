@@ -18,6 +18,8 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const year = new Date().getFullYear();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -31,6 +33,9 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         {children}
+        <footer className="px-4 py-4 text-center text-xs text-slate-600 dark:text-gray-400 border-t border-slate-200/70 dark:border-primary-500/20 bg-white/70 dark:bg-dark-card/40 backdrop-blur-sm">
+          © {year} Nexivo Labs. All rights reserved.
+        </footer>
         <Toaster
           position="bottom-right"
           toastOptions={{
