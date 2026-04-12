@@ -7,6 +7,8 @@
     --foreground-rgb: 15, 23, 42;
     --background-start-rgb: 246, 250, 255;
     --background-end-rgb: 236, 242, 250;
+    --footer-height: 3.5rem;
+    --content-height: calc(100vh - var(--footer-height) - 1px);
   }
 
   .dark {
@@ -23,6 +25,7 @@
       rgb(var(--background-end-rgb))
     );
     min-height: 100vh;
+    overflow-x: hidden;
   }
 
   ::-webkit-scrollbar {
@@ -63,7 +66,8 @@
   }
 
   .page-container {
-    @apply min-h-screen p-4 md:p-8 animate-fade-in;
+    min-height: var(--content-height);
+    @apply p-4 md:p-8 animate-fade-in;
   }
 
   .section-heading {

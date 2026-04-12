@@ -45,7 +45,7 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4">
+    <main className="min-h-[var(--content-height)] flex items-center justify-center p-4">
       <Card className="w-full max-w-md" hover>
         <p className="mb-3 text-xs text-gray-400">
           <Link href="/" className="text-primary-400 hover:text-primary-300">

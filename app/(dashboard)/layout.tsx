@@ -85,7 +85,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-[var(--content-height)] flex">
       <aside
         className={cn(
           "shrink-0 border-r border-primary-500/20 bg-white/70 dark:bg-dark-card/40 backdrop-blur-xl transition-all duration-300 overflow-hidden",

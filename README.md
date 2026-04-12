@@ -149,7 +149,6 @@ Behavior:
 - Original creator account: kavinyda-kariyawasam
 - Copyright (c) 2026 Nexivo Labs. All rights reserved.
 
-This repository is published publicly for deployment and collaboration convenience.
 Source visibility does not grant permission to copy, reuse, redistribute, rebrand, or create derivative commercial/academic products from this codebase without explicit written permission from Nexivo Labs.
 
 If you need usage rights, integration rights, or collaboration approval, contact
