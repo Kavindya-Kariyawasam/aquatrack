@@ -47,6 +47,11 @@ export default function RegisterPage() {
   return (
     <main className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-md" hover>
+        <p className="mb-3 text-xs text-gray-400">
+          <Link href="/" className="text-primary-400 hover:text-primary-300">
+            ← Back to landing page
+          </Link>
+        </p>
         <h1 className="section-heading mb-2">Create Account</h1>
         <p className="text-gray-400 mb-6">Join AquaTrack</p>
 

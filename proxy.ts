@@ -78,7 +78,10 @@ async function verifyEdgeToken(token: string): Promise<ProxyUser | null> {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (publicRoutes.some((route) => pathname.startsWith(route))) {
+  if (
+    pathname === "/" ||
+    publicRoutes.some((route) => pathname.startsWith(route))
+  ) {
     return withSecurityHeaders(NextResponse.next());
   }
 
