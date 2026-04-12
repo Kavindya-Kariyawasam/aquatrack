@@ -125,6 +125,7 @@ export default function AttendancePage() {
   const [role, setRole] = useState<Role>("swimmer");
   const [isRoleLoaded, setIsRoleLoaded] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [selectedLeaveDates, setSelectedLeaveDates] = useState<string[]>([]);
   const [type, setType] = useState<"swimming" | "land">("swimming");
   const [leaveType, setLeaveType] = useState<keyof typeof LEAVE_TYPES>("exam");
   const [reason, setReason] = useState("");
@@ -369,13 +370,24 @@ export default function AttendancePage() {
   }, [isManager, managerDate, monthFilter]);
 
   const onRequestLeave = async () => {
+    const datesToSubmit = Array.from(
+      new Set([
+        ...(selectedLeaveDates.length > 0 ? selectedLeaveDates : [date]),
+      ]),
+    ).filter((item) => /^\d{4}-\d{2}-\d{2}$/.test(item));
+
+    if (datesToSubmit.length === 0) {
+      toast.error("Please select at least one date");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const response = await fetch("/api/attendance/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date, type, leaveType, reason }),
+        body: JSON.stringify({ dates: datesToSubmit, type, leaveType, reason }),
       });
 
       const data = await response.json();
@@ -385,7 +397,17 @@ export default function AttendancePage() {
         return;
       }
 
-      toast.success("Leave request submitted");
+      if (data.failedCount > 0) {
+        toast.success(
+          `Submitted ${data.submittedCount} request${data.submittedCount > 1 ? "s" : ""}. ${data.failedCount} date${data.failedCount > 1 ? "s" : ""} skipped.`,
+        );
+      } else {
+        toast.success(
+          `Leave request submitted for ${data.submittedCount} date${data.submittedCount > 1 ? "s" : ""}`,
+        );
+      }
+
+      setSelectedLeaveDates([]);
       setReason("");
       await loadSwimmerRecords();
     } catch {
@@ -629,6 +651,26 @@ export default function AttendancePage() {
     }
   };
 
+  const addLeaveDate = () => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      toast.error("Please select a valid date");
+      return;
+    }
+
+    setSelectedLeaveDates((prev) => {
+      if (prev.includes(date)) {
+        toast("Date already selected");
+        return prev;
+      }
+
+      return [...prev, date].sort((a, b) => a.localeCompare(b));
+    });
+  };
+
+  const removeLeaveDate = (dateText: string) => {
+    setSelectedLeaveDates((prev) => prev.filter((item) => item !== dateText));
+  };
+
   if (!isRoleLoaded) {
     return (
       <div className="space-y-6">
@@ -656,6 +698,11 @@ export default function AttendancePage() {
               value={date}
               onChange={(e) => setDate(e.target.value)}
             />
+            <div className="flex items-end">
+              <Button type="button" variant="secondary" onClick={addLeaveDate}>
+                Add Date
+              </Button>
+            </div>
             <Select
               label="Session Type"
               value={type}
@@ -685,9 +732,35 @@ export default function AttendancePage() {
               }
             />
           </div>
+
+          <div className="mt-4">
+            <p className="text-sm text-slate-700 dark:text-gray-300 mb-2">
+              Selected dates for this request
+            </p>
+            {selectedLeaveDates.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-gray-400">
+                No dates added yet. Add one or more dates, then submit once.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {selectedLeaveDates.map((dateText) => (
+                  <button
+                    key={dateText}
+                    type="button"
+                    onClick={() => removeLeaveDate(dateText)}
+                    className="text-xs rounded-full px-3 py-1 bg-sky-100 text-sky-800 dark:bg-primary-500/20 dark:text-primary-200"
+                    title="Click to remove"
+                  >
+                    {dateText} ×
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="mt-4">
             <Button onClick={onRequestLeave} isLoading={isSubmitting}>
-              Submit Request
+              Submit Request{selectedLeaveDates.length > 1 ? "s" : ""}
             </Button>
           </div>
         </Card>

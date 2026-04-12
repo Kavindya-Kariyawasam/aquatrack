@@ -52,17 +52,28 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
-    const date = body.date ? new Date(body.date) : null;
+    const rawDates: unknown[] = Array.isArray(body.dates)
+      ? body.dates
+      : body.date
+        ? [body.date]
+        : [];
     const providedType = String(body.type || "")
       .trim()
       .toLowerCase();
-    let type = providedType;
     const leaveType = String(body.leaveType || "").trim();
     const reason = String(body.reason || "").trim();
 
-    if (!date || Number.isNaN(date.getTime())) {
+    const normalizedDates = Array.from(
+      new Set(
+        rawDates
+          .map((value: unknown) => String(value || "").trim())
+          .filter((value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value)),
+      ),
+    );
+
+    if (normalizedDates.length === 0) {
       return NextResponse.json(
-        { error: "Valid date is required" },
+        { error: "At least one valid date is required" },
         { status: 400 },
       );
     }
@@ -70,40 +81,6 @@ export async function POST(req: NextRequest) {
     await dbConnect();
 
     const settings = await Settings.findOne().lean();
-
-    if (settings?.holidays?.length) {
-      const targetDay = new Date(date);
-      targetDay.setHours(0, 0, 0, 0);
-
-      const holidays = settings.holidays as Array<{ date: Date | string }>;
-
-      const isHoliday = holidays.some((holiday) => {
-        const holidayDate = new Date(holiday.date);
-        holidayDate.setHours(0, 0, 0, 0);
-        return holidayDate.getTime() === targetDay.getTime();
-      });
-
-      if (isHoliday) {
-        return NextResponse.json(
-          { error: "Cannot request leave on a holiday/no-practice day" },
-          { status: 400 },
-        );
-      }
-    }
-
-    if (type !== "swimming" && type !== "land") {
-      const weekdayKey = WEEKDAY_KEYS[date.getDay()];
-      const inferredType = settings?.weeklySchedule?.[weekdayKey];
-
-      if (inferredType === "swimming" || inferredType === "land") {
-        type = inferredType;
-      } else {
-        return NextResponse.json(
-          { error: "No scheduled practice session on selected date" },
-          { status: 400 },
-        );
-      }
-    }
 
     if (!(leaveType in LEAVE_TYPES)) {
       return NextResponse.json(
@@ -119,20 +96,83 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const record = await Attendance.findOneAndUpdate(
-      { userId: authUser.userId, date, type },
-      {
-        $set: {
-          status: "absent-requested",
-          leaveType,
-          reason,
-          requestedAt: new Date(),
-        },
-      },
-      { upsert: true, new: true },
-    ).lean();
+    const holidays = (settings?.holidays || []) as Array<{
+      date: Date | string;
+    }>;
+    const holidayKeys = new Set(
+      holidays.map((holiday) =>
+        new Date(holiday.date).toISOString().slice(0, 10),
+      ),
+    );
 
-    return NextResponse.json({ success: true, record });
+    const records: unknown[] = [];
+    const failedDates: Array<{ date: string; error: string }> = [];
+
+    for (const dateText of normalizedDates) {
+      const date = new Date(dateText);
+      if (Number.isNaN(date.getTime())) {
+        failedDates.push({ date: dateText, error: "Invalid date" });
+        continue;
+      }
+
+      const dayKey = date.toISOString().slice(0, 10);
+      if (holidayKeys.has(dayKey)) {
+        failedDates.push({
+          date: dateText,
+          error: "Cannot request leave on a holiday/no-practice day",
+        });
+        continue;
+      }
+
+      let resolvedType = providedType;
+      if (resolvedType !== "swimming" && resolvedType !== "land") {
+        const weekdayKey = WEEKDAY_KEYS[date.getDay()];
+        const inferredType = settings?.weeklySchedule?.[weekdayKey];
+
+        if (inferredType === "swimming" || inferredType === "land") {
+          resolvedType = inferredType;
+        } else {
+          failedDates.push({
+            date: dateText,
+            error: "No scheduled practice session on selected date",
+          });
+          continue;
+        }
+      }
+
+      const record = await Attendance.findOneAndUpdate(
+        { userId: authUser.userId, date, type: resolvedType },
+        {
+          $set: {
+            status: "absent-requested",
+            leaveType,
+            reason,
+            requestedAt: new Date(),
+          },
+        },
+        { upsert: true, new: true },
+      ).lean();
+
+      records.push(record);
+    }
+
+    if (records.length === 0) {
+      return NextResponse.json(
+        {
+          error: failedDates[0]?.error || "Failed to submit leave request",
+          failedDates,
+        },
+        { status: 400 },
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      records,
+      submittedCount: records.length,
+      failedCount: failedDates.length,
+      failedDates,
+    });
   } catch (error) {
     console.error("Attendance request POST error:", error);
     return NextResponse.json(
