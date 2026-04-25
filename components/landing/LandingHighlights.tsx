@@ -32,6 +32,20 @@ function getResultColorClasses(result: string): string {
   return "text-cyan-300 bg-cyan-300/10 border-cyan-300/35";
 }
 
+function getTeamBadgeClasses(team: string): string {
+  const normalized = team.toLowerCase();
+
+  if (normalized === "men") {
+    return "text-sky-200 bg-sky-300/10 border-sky-300/35";
+  }
+
+  if (normalized === "women") {
+    return "text-rose-200 bg-rose-300/10 border-rose-300/35";
+  }
+
+  return "text-cyan-100 bg-cyan-300/10 border-cyan-300/30";
+}
+
 export default function LandingHighlights({
   milestones,
   galleryItems,
@@ -76,9 +90,16 @@ export default function LandingHighlights({
               key={`${item.year}-${item.event}-${item.team}-${item.result}`}
               className="rounded-2xl border border-cyan-400/20 bg-slate-900/70 p-5 shadow-[0_8px_30px_rgba(15,23,42,0.4)] backdrop-blur-sm"
             >
-              <p className="text-xs font-semibold uppercase tracking-wider text-cyan-200/85">
-                {item.year} • {item.team}
-              </p>
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider">
+                <span className="text-cyan-200/85">{item.year}</span>
+                <span
+                  className={`rounded-md border px-2 py-0.5 ${getTeamBadgeClasses(
+                    item.team,
+                  )}`}
+                >
+                  {item.team}
+                </span>
+              </div>
               <h3 className="mt-2 text-lg font-semibold text-white">
                 {item.event}
               </h3>
@@ -115,8 +136,11 @@ export default function LandingHighlights({
           <h2
             className={`${headingClassName} text-2xl font-bold text-white sm:text-3xl`}
           >
-            Meet Day Moments
+            Team Gallery
           </h2>
+          <p className="mt-1 text-sm text-slate-300">
+            Moments that shaped our journey.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
