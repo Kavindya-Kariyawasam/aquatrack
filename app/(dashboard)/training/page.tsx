@@ -6,6 +6,7 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
+import { getAuthMeUser } from "@/lib/authMeClient";
 import { formatDate } from "@/lib/utils";
 
 type Role = "swimmer" | "coach" | "admin";
@@ -138,18 +139,17 @@ export default function TrainingPage() {
 
   const loadSets = useCallback(async () => {
     try {
-      const [meRes, setsRes, settingsRes] = await Promise.all([
-        fetch("/api/auth/me"),
+      const [user, setsRes, settingsRes] = await Promise.all([
+        getAuthMeUser(),
         fetch(`/api/training-sets?type=${type}&month=${monthFilter}&limit=200`),
         fetch("/api/settings"),
       ]);
 
-      const meData = await meRes.json();
       const setsData = await setsRes.json();
       const settingsData = (await settingsRes.json()) as SettingsResponse;
 
-      if (meRes.ok && meData.user?.role) {
-        setRole(meData.user.role as Role);
+      if (user?.role) {
+        setRole(user.role as Role);
       }
 
       if (setsRes.ok) {

@@ -3,18 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
+import { getAuthMeUser } from "@/lib/authMeClient";
 import { formatDate } from "@/lib/utils";
 
 type Role = "swimmer" | "coach" | "admin";
-
-type MeResponse = {
-  success: boolean;
-  user?: {
-    email: string;
-    role: Role;
-    name: string;
-  };
-};
 
 export default function DashboardPage() {
   const [name, setName] = useState("Swimmer");
@@ -41,11 +33,10 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const response = await fetch("/api/auth/me");
-        const data = (await response.json()) as MeResponse;
-        if (response.ok && data.user) {
-          setName(data.user.name || "Swimmer");
-          setRole(data.user.role || "swimmer");
+        const user = await getAuthMeUser();
+        if (user?.role) {
+          setName(user.name || "Swimmer");
+          setRole(user.role || "swimmer");
         }
       } catch {
         // no-op

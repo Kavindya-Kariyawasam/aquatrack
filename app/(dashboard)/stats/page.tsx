@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Card from "@/components/ui/Card";
+import { getAuthMeUser } from "@/lib/authMeClient";
 
 type Role = "swimmer" | "coach" | "admin";
 
@@ -25,15 +26,6 @@ type LeaderboardItem = {
   name: string;
   gender?: string;
   time: string;
-};
-
-type AuthMePayload = {
-  user?: {
-    role?: Role;
-    gender?: string;
-    mainEvents?: string[];
-    extraEvents?: string[];
-  };
 };
 
 type GenderLeaderboard = {
@@ -60,22 +52,17 @@ export default function StatsPage() {
 
   useEffect(() => {
     const load = async () => {
-      const [meRes, statsRes] = await Promise.all([
-        fetch("/api/auth/me"),
+      const [user, statsRes] = await Promise.all([
+        getAuthMeUser(),
         fetch("/api/timings/stats"),
       ]);
-
-      const meData = (await meRes.json()) as AuthMePayload;
       const statsData = await statsRes.json();
 
-      const currentRole = (meData?.user?.role || "swimmer") as Role;
+      const currentRole = (user?.role || "swimmer") as Role;
       setRole(currentRole);
-      setSwimmerGender(String(meData?.user?.gender || "").toLowerCase());
+      setSwimmerGender(String(user?.gender || "").toLowerCase());
       const selectedEvents = Array.from(
-        new Set([
-          ...(meData?.user?.mainEvents || []),
-          ...(meData?.user?.extraEvents || []),
-        ]),
+        new Set([...(user?.mainEvents || []), ...(user?.extraEvents || [])]),
       ).slice(0, 5);
       setSwimmerSelectedEvents(selectedEvents);
 

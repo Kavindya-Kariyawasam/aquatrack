@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
+import { getAuthMeUser } from "@/lib/authMeClient";
 import { formatDate } from "@/lib/utils";
 
 type Role = "swimmer" | "coach" | "admin";
@@ -33,16 +34,14 @@ export default function AnnouncementsPage() {
 
   const loadData = async () => {
     try {
-      const [meRes, annRes] = await Promise.all([
-        fetch("/api/auth/me"),
+      const [user, annRes] = await Promise.all([
+        getAuthMeUser(),
         fetch("/api/announcements"),
       ]);
-
-      const meData = await meRes.json();
       const annData = await annRes.json();
 
-      if (meRes.ok) {
-        setRole((meData?.user?.role || "swimmer") as Role);
+      if (user?.role) {
+        setRole(user.role as Role);
       }
 
       if (annRes.ok) {

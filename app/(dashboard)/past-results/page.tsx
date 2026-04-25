@@ -2,16 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Card from "@/components/ui/Card";
+import { getAuthMeUser } from "@/lib/authMeClient";
 
 type Role = "swimmer" | "coach" | "admin";
 type Gender = "male" | "female";
-
-type AuthMePayload = {
-  user?: {
-    role?: Role;
-    gender?: "male" | "female" | "";
-  };
-};
 
 type ResultRow = {
   meet_name: string;
@@ -63,19 +57,15 @@ export default function PastResultsPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [meRes, csvRes] = await Promise.all([
-          fetch("/api/auth/me"),
+        const [user, csvRes] = await Promise.all([
+          getAuthMeUser(),
           fetch("/data/SLUG2025.csv"),
         ]);
-
-        const meData = (await meRes.json()) as AuthMePayload;
         const csvText = await csvRes.text();
 
-        if (meRes.ok && meData.user?.role) {
-          setRole(meData.user.role);
-          setProfileGender(
-            (meData.user.gender || "") as "male" | "female" | "",
-          );
+        if (user?.role) {
+          setRole(user.role as Role);
+          setProfileGender((user.gender || "") as "male" | "female" | "");
         }
 
         const lines = csvText

@@ -6,6 +6,7 @@ import { ReactNode, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { Menu, PanelLeftClose } from "lucide-react";
 import Button from "@/components/ui/Button";
+import { clearAuthMeCache, getAuthMeUser } from "@/lib/authMeClient";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -33,11 +34,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     const loadRole = async () => {
       try {
-        const response = await fetch("/api/auth/me");
-        const data = await response.json();
-        if (response.ok && data.user?.role) {
-          setRole(data.user.role);
-          setUserName(data.user.name || "Swimmer");
+        const user = await getAuthMeUser();
+        if (user?.role) {
+          setRole(user.role);
+          setUserName(user.name || "Swimmer");
         }
       } catch {
         // no-op
@@ -67,6 +67,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
     try {
       await fetch("/api/auth/logout", { method: "POST" });
+      clearAuthMeCache();
       toast.success("Logged out");
       router.push("/login");
       router.refresh();

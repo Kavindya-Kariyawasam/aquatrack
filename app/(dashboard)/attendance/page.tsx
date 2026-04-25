@@ -6,6 +6,7 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
+import { getAuthMeUser } from "@/lib/authMeClient";
 import { LEAVE_TYPES } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 
@@ -183,10 +184,9 @@ export default function AttendancePage() {
 
   const loadCore = async () => {
     try {
-      const meRes = await fetch("/api/auth/me");
-      const meData = await meRes.json();
-      if (meRes.ok && meData.user?.role) {
-        setRole(meData.user.role as Role);
+      const user = await getAuthMeUser();
+      if (user?.role) {
+        setRole(user.role as Role);
       }
     } catch {
       toast.error("Failed to load user role");
@@ -336,6 +336,8 @@ export default function AttendancePage() {
   }, []);
 
   useEffect(() => {
+    if (!isRoleLoaded) return;
+
     if (isManager) {
       void Promise.all([
         loadManagerRecords(),
@@ -360,6 +362,7 @@ export default function AttendancePage() {
     loadSwimmerSummary,
     loadSwimmerRecords,
     loadSwimmers,
+    isRoleLoaded,
   ]);
 
   useEffect(() => {

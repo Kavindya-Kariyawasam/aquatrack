@@ -6,6 +6,7 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
+import { getAuthMeUser } from "@/lib/authMeClient";
 import { SWIMMING_EVENTS } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 
@@ -76,9 +77,8 @@ export default function ProgressPage() {
 
   const loadData = async () => {
     try {
-      const meRes = await fetch("/api/auth/me");
-      const meData = await meRes.json();
-      const userRole = (meData?.user?.role || "swimmer") as Role;
+      const user = await getAuthMeUser();
+      const userRole = (user?.role || "swimmer") as Role;
       setRole(userRole);
 
       if (userRole === "swimmer") {
