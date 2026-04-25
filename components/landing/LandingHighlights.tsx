@@ -149,15 +149,26 @@ export default function LandingHighlights({
               key={item.id}
               className="overflow-hidden rounded-2xl border border-cyan-400/20 bg-slate-900/60"
             >
-              <div className="relative aspect-[4/3]">
-                <Image
-                  src={item.imageUrl}
-                  alt={item.alt}
-                  fill
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  className="object-cover transition duration-300 hover:scale-105"
-                />
-              </div>
+              <a
+                href={item.imageUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group block"
+                aria-label={`Open full image: ${item.title}`}
+              >
+                <div className="relative aspect-[4/3] bg-slate-950/70 p-2">
+                  <Image
+                    src={item.imageUrl}
+                    alt={item.alt}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    className="object-contain transition duration-300 group-hover:scale-[1.02]"
+                  />
+                  <span className="pointer-events-none absolute right-3 top-3 rounded-full border border-cyan-200/40 bg-slate-950/65 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-cyan-100 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                    View Full
+                  </span>
+                </div>
+              </a>
               <figcaption className="space-y-1 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wider text-cyan-200/85">
                   {item.category} • {item.year} • {item.team}
