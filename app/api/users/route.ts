@@ -108,3 +108,67 @@ export async function PATCH(req: NextRequest) {
     );
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const authUser = getUserFromRequest(req);
+    if (!authUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (authUser.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { userId } = await req.json();
+    const normalizedUserId = String(userId || "").trim();
+
+    if (!normalizedUserId) {
+      return NextResponse.json(
+        { error: "userId is required" },
+        { status: 400 },
+      );
+    }
+
+    if (normalizedUserId === authUser.userId) {
+      return NextResponse.json(
+        { error: "You cannot remove your own account" },
+        { status: 400 },
+      );
+    }
+
+    await dbConnect();
+
+    const user = await User.findById(normalizedUserId)
+      .select("_id role isApproved")
+      .lean();
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    if (user.role === "admin") {
+      return NextResponse.json(
+        { error: "Admin accounts cannot be removed" },
+        { status: 400 },
+      );
+    }
+
+    if (user.isApproved) {
+      return NextResponse.json(
+        { error: "Only pending users can be removed from this action" },
+        { status: 400 },
+      );
+    }
+
+    await User.findByIdAndDelete(normalizedUserId);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Users delete error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
+  }
+}

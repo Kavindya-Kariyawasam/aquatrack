@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { X } from "lucide-react";
 import toast from "react-hot-toast";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -55,6 +56,7 @@ export default function AdminPage() {
   const [editContent, setEditContent] = useState("");
   const [editPriority, setEditPriority] = useState("medium");
   const [isUpdatingAnnouncement, setIsUpdatingAnnouncement] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
@@ -279,6 +281,41 @@ export default function AdminPage() {
     }
   };
 
+  const onDeletePendingUser = async (user: UserItem) => {
+    const displayName =
+      user.profile?.callingName || user.profile?.fullName || user.email;
+
+    const confirmed = window.confirm(
+      `Remove pending account for ${displayName}? This cannot be undone.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingUserId(user._id);
+    try {
+      const response = await fetch("/api/users", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user._id }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.error || "Failed to remove user");
+        return;
+      }
+
+      toast.success("Pending user removed");
+      await loadData();
+    } catch {
+      toast.error("Network error while removing user");
+    } finally {
+      setDeletingUserId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="section-heading">Admin</h1>
@@ -454,12 +491,24 @@ export default function AdminPage() {
                             Set Pending
                           </Button>
                         ) : (
-                          <Button
-                            size="sm"
-                            onClick={() => void onSetApproval(user._id, true)}
-                          >
-                            Approve
-                          </Button>
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => void onSetApproval(user._id, true)}
+                            >
+                              Approve
+                            </Button>
+                            <button
+                              type="button"
+                              onClick={() => void onDeletePendingUser(user)}
+                              disabled={deletingUserId === user._id}
+                              aria-label="Remove pending user"
+                              title="Remove pending user"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/15 text-red-300 transition hover:bg-red-500/25 disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                              <X size={15} />
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
