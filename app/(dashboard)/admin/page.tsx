@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import toast from "react-hot-toast";
 import Button from "@/components/ui/Button";
@@ -57,6 +57,23 @@ export default function AdminPage() {
   const [editPriority, setEditPriority] = useState("medium");
   const [isUpdatingAnnouncement, setIsUpdatingAnnouncement] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+
+  const sortedUsers = useMemo(() => {
+    const getUserLabel = (user: UserItem) => {
+      return (
+        user.profile?.callingName ||
+        user.profile?.fullName ||
+        user.email ||
+        ""
+      )
+        .trim()
+        .toLowerCase();
+    };
+
+    return [...users].sort((a, b) =>
+      getUserLabel(a).localeCompare(getUserLabel(b)),
+    );
+  }, [users]);
 
   const loadData = async () => {
     try {
@@ -449,7 +466,7 @@ export default function AdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
+                {sortedUsers.map((user) => (
                   <tr key={user._id}>
                     <td>
                       {user.profile?.callingName ||

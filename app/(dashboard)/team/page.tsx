@@ -32,6 +32,12 @@ function eventTag(user: UserItem, eventName: string): string {
   return "";
 }
 
+function compareSwimmersByName(a: UserItem, b: UserItem): number {
+  const aName = (a.profile?.fullName || a.email || "").trim().toLowerCase();
+  const bName = (b.profile?.fullName || b.email || "").trim().toLowerCase();
+  return aName.localeCompare(bName);
+}
+
 export default function TeamPage() {
   const [users, setUsers] = useState<UserItem[]>([]);
 
@@ -52,9 +58,15 @@ export default function TeamPage() {
   const { men, women, unassigned } = useMemo(() => {
     const swimmers = users.filter((user) => user.isApproved);
     return {
-      men: swimmers.filter((user) => user.profile?.gender === "male"),
-      women: swimmers.filter((user) => user.profile?.gender === "female"),
-      unassigned: swimmers.filter((user) => !user.profile?.gender),
+      men: swimmers
+        .filter((user) => user.profile?.gender === "male")
+        .sort(compareSwimmersByName),
+      women: swimmers
+        .filter((user) => user.profile?.gender === "female")
+        .sort(compareSwimmersByName),
+      unassigned: swimmers
+        .filter((user) => !user.profile?.gender)
+        .sort(compareSwimmersByName),
     };
   }, [users]);
 
