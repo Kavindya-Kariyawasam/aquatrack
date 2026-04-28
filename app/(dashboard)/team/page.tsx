@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Card from "@/components/ui/Card";
+import Button from "@/components/ui/Button";
+import EditUserModal from "@/components/ui/EditUserModal";
+import { getAuthMeUser } from "@/lib/authMeClient";
 import { SWIMMING_EVENTS } from "@/lib/constants";
 
 type UserItem = {
@@ -40,12 +43,24 @@ function compareSwimmersByName(a: UserItem, b: UserItem): number {
 
 export default function TeamPage() {
   const [users, setUsers] = useState<UserItem[]>([]);
+  const [role, setRole] = useState<string>("swimmer");
+  const [isRoleLoaded, setIsRoleLoaded] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserItem | null>(null);
 
   useEffect(() => {
     const load = async () => {
-      const response = await fetch("/api/users");
-      const data = await response.json();
-      if (response.ok) {
+      const [me, res] = await Promise.all([
+        getAuthMeUser(),
+        fetch("/api/users"),
+      ]);
+      try {
+        if (me?.role) setRole(me.role as string);
+      } finally {
+        setIsRoleLoaded(true);
+      }
+
+      const data = await res.json();
+      if (res.ok) {
         setUsers(
           (data.users || []).filter((u: UserItem) => u.role === "swimmer"),
         );
@@ -80,6 +95,7 @@ export default function TeamPage() {
           <table className="data-table">
             <thead>
               <tr>
+                {role === "admin" && <th>Actions</th>}
                 <th>Full Name</th>
                 <th>DOB</th>
                 <th>ID</th>
@@ -96,6 +112,16 @@ export default function TeamPage() {
             <tbody>
               {rows.map((user) => (
                 <tr key={user._id}>
+                  {role === "admin" && (
+                    <td>
+                      <Button
+                        variant="ghost"
+                        onClick={() => setEditingUser(user)}
+                      >
+                        Edit
+                      </Button>
+                    </td>
+                  )}
                   <td>{user.profile?.fullName || "-"}</td>
                   <td>
                     {user.profile?.dob
@@ -140,6 +166,20 @@ export default function TeamPage() {
       {renderTable("Mens Team", men)}
       {renderTable("Womens Team", women)}
       {renderTable("Unassigned", unassigned)}
+
+      <EditUserModal
+        open={Boolean(editingUser)}
+        user={editingUser}
+        onClose={() => setEditingUser(null)}
+        onSaved={(updated) => {
+          if (!updated || !updated._id) return;
+          setUsers((prev) =>
+            prev.map((u) =>
+              String(u._id) === String(updated._id) ? { ...u, ...updated } : u,
+            ),
+          );
+        }}
+      />
     </div>
   );
 }

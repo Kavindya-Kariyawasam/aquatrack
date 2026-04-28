@@ -41,8 +41,8 @@ export async function PATCH(req: NextRequest) {
     if (authUser.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-
-    const { userId, isApproved, role } = await req.json();
+    const body = await req.json();
+    const { userId, isApproved, role, profile } = body || {};
     const normalizedUserId = String(userId || "").trim();
     const normalizedRole = String(role || "").trim();
 
@@ -53,12 +53,13 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    const updatePayload: Record<string, unknown> = {};
+    const topLevelUpdates: Record<string, unknown> = {};
+    const setOps: Record<string, unknown> = {};
 
     if (typeof isApproved === "boolean") {
-      updatePayload.isApproved = isApproved;
-      updatePayload.approvedAt = isApproved ? new Date() : undefined;
-      updatePayload.approvedBy = isApproved ? authUser.userId : "";
+      topLevelUpdates.isApproved = isApproved;
+      topLevelUpdates.approvedAt = isApproved ? new Date() : undefined;
+      topLevelUpdates.approvedBy = isApproved ? authUser.userId : "";
     }
 
     if (normalizedRole) {
@@ -66,16 +67,54 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: "Invalid role" }, { status: 400 });
       }
 
-      updatePayload.role = normalizedRole;
+      topLevelUpdates.role = normalizedRole;
 
       if (normalizedRole !== "swimmer") {
-        updatePayload.isApproved = true;
-        updatePayload.approvedAt = new Date();
-        updatePayload.approvedBy = authUser.userId;
+        topLevelUpdates.isApproved = true;
+        topLevelUpdates.approvedAt = new Date();
+        topLevelUpdates.approvedBy = authUser.userId;
       }
     }
 
-    if (Object.keys(updatePayload).length === 0) {
+    // Allow safe, partial updates to select profile fields via dot-set so we
+    // don't overwrite the entire profile object. Only permit known keys.
+    if (profile && typeof profile === "object") {
+      const allowed = [
+        "fullName",
+        "gender",
+        "dob",
+        "universityId",
+        "nicNumber",
+        "faculty",
+        "batch",
+        "contact",
+        "emergencyContact",
+        "mainEvents",
+        "extraEvents",
+      ];
+
+      for (const key of Object.keys(profile)) {
+        if (!allowed.includes(key)) continue;
+        const val = (profile as Record<string, unknown>)[key];
+
+        // basic validation for arrays
+        if ((key === "mainEvents" || key === "extraEvents") && val) {
+          if (!Array.isArray(val)) {
+            return NextResponse.json(
+              { error: `${key} must be an array` },
+              { status: 400 },
+            );
+          }
+        }
+
+        setOps[`profile.${key}`] = val;
+      }
+    }
+
+    if (
+      Object.keys(topLevelUpdates).length === 0 &&
+      Object.keys(setOps).length === 0
+    ) {
       return NextResponse.json(
         { error: "No valid fields provided for update" },
         { status: 400 },
@@ -84,9 +123,14 @@ export async function PATCH(req: NextRequest) {
 
     await dbConnect();
 
+    const updateQuery: Record<string, unknown> = { ...topLevelUpdates };
+    if (Object.keys(setOps).length > 0) {
+      updateQuery["$set"] = setOps;
+    }
+
     const updatedUser = await User.findByIdAndUpdate(
       normalizedUserId,
-      updatePayload,
+      updateQuery,
       {
         new: true,
         runValidators: true,
