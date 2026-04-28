@@ -74,7 +74,16 @@ export default function StatsPage() {
       const overallData = await overallRes.json();
 
       if (overallRes.ok) {
-        setOverallRows(overallData?.overall?.bySwimmer || []);
+        const bySwimmer = overallData?.overall?.bySwimmer || [];
+        const sortedByName = Array.isArray(bySwimmer)
+          ? bySwimmer
+              .slice()
+              .sort((a, b) =>
+                String(a.name || "").localeCompare(String(b.name || "")),
+              )
+          : bySwimmer;
+
+        setOverallRows(sortedByName);
         setLeaderboardByEvent(overallData?.overall?.leaderboardByEvent || {});
         setLeaderboardByEventGender(
           overallData?.overall?.leaderboardByEventGender || {},

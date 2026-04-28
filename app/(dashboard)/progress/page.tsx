@@ -101,7 +101,16 @@ export default function ProgressPage() {
         const overallRes = await fetch("/api/timings/stats/overall");
         const overallData = await overallRes.json();
         if (overallRes.ok) {
-          setOverallRows(overallData?.overall?.bySwimmer || []);
+          const bySwimmer = overallData?.overall?.bySwimmer || [];
+          const sortedByName = Array.isArray(bySwimmer)
+            ? bySwimmer
+                .slice()
+                .sort((a, b) =>
+                  String(a.name || "").localeCompare(String(b.name || "")),
+                )
+            : bySwimmer;
+
+          setOverallRows(sortedByName);
         }
       }
     } catch {
