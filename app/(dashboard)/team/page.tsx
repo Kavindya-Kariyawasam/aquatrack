@@ -95,8 +95,20 @@ export default function TeamPage() {
           <table className="data-table">
             <thead>
               <tr>
-                {role === "admin" && <th>Actions</th>}
-                <th>Full Name</th>
+                <th className="sticky left-0 top-0 z-40 bg-slate-100 dark:bg-dark-card/80 w-12 text-left">
+                  #
+                </th>
+                <th
+                  className="sticky left-12 top-0 z-40 bg-slate-100 dark:bg-dark-card/80 text-left"
+                  style={{ left: "48px" }}
+                >
+                  Full Name
+                </th>
+                {role === "admin" && (
+                  <th className="top-0 sticky z-30 bg-slate-100 dark:bg-dark-card/80">
+                    Actions
+                  </th>
+                )}
                 <th>DOB</th>
                 <th>ID</th>
                 <th>NIC</th>
@@ -105,13 +117,27 @@ export default function TeamPage() {
                 <th>Contact</th>
                 <th>Emergency</th>
                 {SWIMMING_EVENTS.map((event) => (
-                  <th key={event}>{event}</th>
+                  <th
+                    key={event}
+                    className="top-0 sticky z-20 bg-slate-100 dark:bg-dark-card/80"
+                  >
+                    {event}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {rows.map((user) => (
+              {rows.map((user, index) => (
                 <tr key={user._id}>
+                  <td className="sticky left-0 bg-white dark:bg-dark-card z-40 text-sm px-4 py-3">
+                    {index + 1}
+                  </td>
+                  <td
+                    className="sticky left-12 bg-white dark:bg-dark-card z-30 px-4 py-3"
+                    style={{ left: "48px" }}
+                  >
+                    {user.profile?.fullName || "-"}
+                  </td>
                   {role === "admin" && (
                     <td>
                       <Button
@@ -122,7 +148,6 @@ export default function TeamPage() {
                       </Button>
                     </td>
                   )}
-                  <td>{user.profile?.fullName || "-"}</td>
                   <td>
                     {user.profile?.dob
                       ? new Date(user.profile.dob).toLocaleDateString()
