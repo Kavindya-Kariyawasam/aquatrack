@@ -87,10 +87,26 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-[var(--content-height)] flex">
+      {/* Backdrop for mobile when sidebar is open */}
+      <div
+        className={cn(
+          "fixed inset-0 bg-black/40 z-40 lg:hidden transition-opacity",
+          isSidebarOpen
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none",
+        )}
+        onClick={() => setIsSidebarOpen(false)}
+        aria-hidden
+      />
+
       <aside
         className={cn(
-          "shrink-0 border-r border-primary-500/20 bg-white/70 dark:bg-dark-card/40 backdrop-blur-xl transition-all duration-300 overflow-hidden",
-          isSidebarOpen ? "w-[260px] p-4 lg:p-6" : "w-0 p-0 border-r-0",
+          // base styles: overlay on small, static on large
+          "border-r border-primary-500/20 bg-white/70 dark:bg-dark-card/40 backdrop-blur-xl transition-transform duration-300 overflow-auto fixed inset-y-0 left-0 z-50 lg:static lg:inset-auto lg:transform-none",
+          // when open: visible on mobile and normal width on large
+          isSidebarOpen
+            ? "translate-x-0 w-[260px] p-4 lg:p-6"
+            : "-translate-x-full lg:w-0 lg:p-0 lg:border-r-0",
         )}
       >
         <div className="mb-6">
