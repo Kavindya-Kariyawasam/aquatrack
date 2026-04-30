@@ -86,7 +86,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="min-h-[var(--content-height)] flex">
+    <div className="min-h-[var(--content-height)] lg:h-[var(--content-height)] flex lg:overflow-hidden">
       {/* Backdrop for mobile when sidebar is open */}
       <div
         className={cn(
@@ -102,55 +102,67 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <aside
         className={cn(
           // base styles: overlay on small, static on large
-          "border-r border-primary-500/20 bg-white/70 dark:bg-dark-card/40 backdrop-blur-xl transition-transform duration-300 overflow-auto fixed inset-y-0 left-0 z-50 lg:static lg:inset-auto lg:transform-none",
+          "border-r border-primary-500/20 bg-white/70 dark:bg-dark-card/40 backdrop-blur-xl transition-transform duration-300 overflow-hidden fixed inset-y-0 left-0 z-50 lg:static lg:inset-auto lg:transform-none lg:h-full",
           // when open: visible on mobile and normal width on large
           isSidebarOpen
-            ? "translate-x-0 w-[260px] p-4 lg:p-6"
+            ? "translate-x-0 w-[260px] p-3 md:p-4 lg:p-5"
             : "-translate-x-full lg:w-0 lg:p-0 lg:border-r-0",
         )}
       >
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gradient">AquaTrack</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Team Manager
-          </p>
-          <p className="text-sm text-gray-700 dark:text-gray-200 mt-2">
-            Signed in as <span className="font-semibold">{userName}</span>
-          </p>
-        </div>
+        <div className="flex h-full min-h-0 flex-col gap-3 md:gap-4">
+          <div className="shrink-0">
+            <h2 className="text-xl md:text-2xl font-bold text-gradient">
+              AquaTrack
+            </h2>
+            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">
+              Team Manager
+            </p>
+            <p className="mt-1 md:mt-2 text-xs md:text-sm text-gray-700 dark:text-gray-200">
+              Signed in as <span className="font-semibold">{userName}</span>
+            </p>
+          </div>
 
-        <nav className="space-y-2 mb-6">
-          {visibleNavItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "block px-3 py-2 rounded-lg border transition-all",
-                pathname === item.href
-                  ? "border-primary-500/40 bg-primary-500/15 text-primary-300"
-                  : "border-transparent text-slate-700 dark:text-gray-300 hover:border-primary-500/30 hover:bg-primary-500/10",
-              )}
+          <nav className="flex-1 min-h-0 space-y-1.5 md:space-y-2 overflow-y-auto overscroll-contain pr-1">
+            {visibleNavItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "block px-3 py-2 rounded-lg border transition-all text-sm md:text-base",
+                  pathname === item.href
+                    ? "border-primary-500/40 bg-primary-500/15 text-primary-300"
+                    : "border-transparent text-slate-700 dark:text-gray-300 hover:border-primary-500/30 hover:bg-primary-500/10",
+                )}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="shrink-0 pt-2 md:pt-3 space-y-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="w-full text-sm md:text-base"
+              onClick={toggleTheme}
             >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+              {isDarkMode ? "Switch To Light" : "Switch To Dark"}
+            </Button>
 
-        <Button variant="secondary" className="w-full" onClick={toggleTheme}>
-          {isDarkMode ? "Switch To Light" : "Switch To Dark"}
-        </Button>
-
-        <Button
-          variant="secondary"
-          className="w-full mt-2"
-          onClick={handleLogout}
-          isLoading={isLoggingOut}
-        >
-          Logout
-        </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="w-full text-sm md:text-base"
+              onClick={handleLogout}
+              isLoading={isLoggingOut}
+            >
+              Logout
+            </Button>
+          </div>
+        </div>
       </aside>
 
-      <section className="flex-1 min-w-0 p-4 md:p-8">
+      <section className="flex-1 min-w-0 p-4 md:p-8 lg:h-full lg:overflow-y-auto lg:min-h-0">
         <div className="mb-4 flex items-center">
           <button
             type="button"

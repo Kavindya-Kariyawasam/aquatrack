@@ -41,6 +41,9 @@ function compareSwimmersByName(a: UserItem, b: UserItem): number {
   return aName.localeCompare(bName);
 }
 
+const headerCellBase =
+  "sticky top-0 bg-slate-100 dark:bg-dark-card/80 align-top border-b border-primary-500/20";
+
 export default function TeamPage() {
   const [users, setUsers] = useState<UserItem[]>([]);
   const [role, setRole] = useState<string>("swimmer");
@@ -91,36 +94,33 @@ export default function TeamPage() {
       {rows.length === 0 ? (
         <p className="text-gray-400">No swimmers in this section.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="data-table">
+        <div className="max-h-[calc(100vh-16rem)] overflow-auto rounded border border-primary-500/20">
+          <table className="data-table min-w-max">
             <thead>
               <tr>
-                <th className="sticky left-0 top-0 z-40 bg-slate-100 dark:bg-dark-card/80 w-12 text-left">
+                <th
+                  className={`${headerCellBase} sticky left-0 z-50 w-12 text-left`}
+                >
                   #
                 </th>
                 <th
-                  className="sticky left-12 top-0 z-40 bg-slate-100 dark:bg-dark-card/80 text-left"
+                  className={`${headerCellBase} sticky left-12 z-50 text-left`}
                   style={{ left: "48px" }}
                 >
                   Full Name
                 </th>
                 {role === "admin" && (
-                  <th className="top-0 sticky z-30 bg-slate-100 dark:bg-dark-card/80">
-                    Actions
-                  </th>
+                  <th className={`${headerCellBase} z-40`}>Actions</th>
                 )}
-                <th>DOB</th>
-                <th>ID</th>
-                <th>NIC</th>
-                <th>Faculty</th>
-                <th>Batch</th>
-                <th>Contact</th>
-                <th>Emergency</th>
+                <th className={`${headerCellBase} z-30`}>DOB</th>
+                <th className={`${headerCellBase} z-30`}>ID</th>
+                <th className={`${headerCellBase} z-30`}>NIC</th>
+                <th className={`${headerCellBase} z-30`}>Faculty</th>
+                <th className={`${headerCellBase} z-30`}>Batch</th>
+                <th className={`${headerCellBase} z-30`}>Contact</th>
+                <th className={`${headerCellBase} z-30`}>Emergency</th>
                 {SWIMMING_EVENTS.map((event) => (
-                  <th
-                    key={event}
-                    className="top-0 sticky z-20 bg-slate-100 dark:bg-dark-card/80"
-                  >
+                  <th key={event} className={`${headerCellBase} z-20`}>
                     {event}
                   </th>
                 ))}
