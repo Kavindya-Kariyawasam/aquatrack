@@ -99,13 +99,12 @@ export default function TeamPage() {
             <thead>
               <tr>
                 <th
-                  className={`${headerCellBase} sticky left-0 z-50 w-12 text-left`}
+                  className={`${headerCellBase} md:sticky md:left-0 md:z-50 w-12 text-left`}
                 >
                   #
                 </th>
                 <th
-                  className={`${headerCellBase} sticky left-12 z-50 text-left`}
-                  style={{ left: "48px" }}
+                  className={`${headerCellBase} md:sticky md:left-12 md:z-50 text-left`}
                 >
                   Full Name
                 </th>
@@ -129,13 +128,10 @@ export default function TeamPage() {
             <tbody>
               {rows.map((user, index) => (
                 <tr key={user._id}>
-                  <td className="sticky left-0 bg-white dark:bg-dark-card z-40 text-sm px-4 py-3">
+                  <td className="md:sticky md:left-0 md:z-40 bg-white dark:bg-dark-card text-sm px-4 py-3">
                     {index + 1}
                   </td>
-                  <td
-                    className="sticky left-12 bg-white dark:bg-dark-card z-30 px-4 py-3"
-                    style={{ left: "48px" }}
-                  >
+                  <td className="md:sticky md:left-12 md:z-30 bg-white dark:bg-dark-card px-4 py-3">
                     {user.profile?.fullName || "-"}
                   </td>
                   {role === "admin" && (
