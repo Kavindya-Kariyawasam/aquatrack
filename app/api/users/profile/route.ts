@@ -3,6 +3,11 @@ import dbConnect from "@/lib/mongodb";
 import { SWIMMING_EVENTS } from "@/lib/constants";
 import { getUserFromRequest } from "@/lib/jwt";
 import User from "@/models/User";
+import {
+  isValidNICNumber,
+  isValidUniversityId,
+  isValidBatch,
+} from "@/lib/utils";
 
 const ALLOWED_FIELDS = [
   "fullName",
@@ -76,6 +81,36 @@ export async function PUT(req: NextRequest) {
     }
 
     if (isSwimmer) {
+      // Validate NIC number if provided
+      if (body.nicNumber && !isValidNICNumber(body.nicNumber)) {
+        return NextResponse.json(
+          { error: "NIC must be exactly 12 digits" },
+          { status: 400 },
+        );
+      }
+
+      // Validate University ID if provided
+      if (body.universityId && !isValidUniversityId(body.universityId)) {
+        return NextResponse.json(
+          { error: "University ID must be 6 digits followed by 1 letter" },
+          { status: 400 },
+        );
+      }
+
+      // Validate Batch if provided
+      if (
+        body.batch !== undefined &&
+        body.batch !== null &&
+        body.batch !== ""
+      ) {
+        if (!isValidBatch(body.batch)) {
+          return NextResponse.json(
+            { error: "Batch must be between 10 and 99" },
+            { status: 400 },
+          );
+        }
+      }
+
       const mainEvents = sanitizeEvents(body.mainEvents, 3);
       const extraEvents = sanitizeEvents(body.extraEvents, 2).filter(
         (event) => !mainEvents.includes(event),

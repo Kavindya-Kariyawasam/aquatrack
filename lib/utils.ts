@@ -70,6 +70,24 @@ export function isValidTimeFormat(time: string): boolean {
   return timeRegex.test(time);
 }
 
+// Validate NIC number (exactly 12 digits)
+export function isValidNICNumber(nic: string): boolean {
+  const nicRegex = /^\d{12}$/;
+  return nicRegex.test(nic.trim());
+}
+
+// Validate University ID (6 digits followed by 1 English letter)
+export function isValidUniversityId(id: string): boolean {
+  const idRegex = /^\d{6}[a-zA-Z]$/;
+  return idRegex.test(id.trim());
+}
+
+// Validate Batch (2 digits: 10-99)
+export function isValidBatch(batch: string | number): boolean {
+  const num = typeof batch === "string" ? parseInt(batch, 10) : batch;
+  return !isNaN(num) && num >= 10 && num <= 99;
+}
+
 // Get event category
 export function getEventCategory(event: string): string {
   if (event.includes("freestyle")) return "Freestyle";

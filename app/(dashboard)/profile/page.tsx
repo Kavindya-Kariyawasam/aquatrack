@@ -7,6 +7,11 @@ import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import { FACULTIES, SWIMMING_EVENTS } from "@/lib/constants";
+import {
+  isValidNICNumber,
+  isValidUniversityId,
+  isValidBatch,
+} from "@/lib/utils";
 
 type Role = "swimmer" | "coach" | "admin";
 
@@ -23,6 +28,12 @@ type ProfileState = {
   nicNumber: string;
   mainEvents: string[];
   extraEvents: string[];
+};
+
+type ValidationErrors = {
+  nicNumber?: string;
+  universityId?: string;
+  batch?: string;
 };
 
 const initialState: ProfileState = {
@@ -45,6 +56,9 @@ export default function ProfilePage() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("swimmer");
   const [isLoading, setIsLoading] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
+    {},
+  );
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -87,6 +101,34 @@ export default function ProfilePage() {
 
   const updateField = (key: keyof ProfileState, value: string | string[]) => {
     setProfile((previous) => ({ ...previous, [key]: value }));
+    // Clear error when user starts editing
+    if (key === "nicNumber" || key === "universityId" || key === "batch") {
+      setValidationErrors((prev) => {
+        const next = { ...prev };
+        delete next[key as keyof ValidationErrors];
+        return next;
+      });
+    }
+  };
+
+  const validateProfileFields = (): boolean => {
+    const errors: ValidationErrors = {};
+
+    if (role === "swimmer") {
+      if (profile.nicNumber && !isValidNICNumber(profile.nicNumber)) {
+        errors.nicNumber = "NIC must be exactly 12 digits";
+      }
+      if (profile.universityId && !isValidUniversityId(profile.universityId)) {
+        errors.universityId =
+          "University ID must be 6 digits followed by 1 letter (e.g., 123456A)";
+      }
+      if (profile.batch && !isValidBatch(profile.batch)) {
+        errors.batch = "Batch must be between 10 and 99";
+      }
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const toggleMainEvent = (event: string) => {
@@ -140,6 +182,11 @@ export default function ProfilePage() {
   };
 
   const onSave = async () => {
+    if (!validateProfileFields()) {
+      toast.error("Please fix validation errors before saving");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -245,26 +292,50 @@ export default function ProfilePage() {
                   })),
                 ]}
               />
-              <Input
-                label="Batch"
-                type="number"
-                value={profile.batch}
-                onChange={(event) => updateField("batch", event.target.value)}
-              />
-              <Input
-                label="University ID"
-                value={profile.universityId}
-                onChange={(event) =>
-                  updateField("universityId", event.target.value)
-                }
-              />
-              <Input
-                label="NIC Number"
-                value={profile.nicNumber}
-                onChange={(event) =>
-                  updateField("nicNumber", event.target.value)
-                }
-              />
+              <div>
+                <Input
+                  label="Batch"
+                  type="number"
+                  value={profile.batch}
+                  onChange={(event) => updateField("batch", event.target.value)}
+                  placeholder="10-99"
+                />
+                {validationErrors.batch && (
+                  <p className="mt-1 text-xs text-red-400">
+                    {validationErrors.batch}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Input
+                  label="University ID"
+                  value={profile.universityId}
+                  onChange={(event) =>
+                    updateField("universityId", event.target.value)
+                  }
+                  placeholder="e.g., 123456A"
+                />
+                {validationErrors.universityId && (
+                  <p className="mt-1 text-xs text-red-400">
+                    {validationErrors.universityId}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Input
+                  label="NIC Number"
+                  value={profile.nicNumber}
+                  onChange={(event) =>
+                    updateField("nicNumber", event.target.value)
+                  }
+                  placeholder="12 digits"
+                />
+                {validationErrors.nicNumber && (
+                  <p className="mt-1 text-xs text-red-400">
+                    {validationErrors.nicNumber}
+                  </p>
+                )}
+              </div>
             </>
           )}
         </div>
