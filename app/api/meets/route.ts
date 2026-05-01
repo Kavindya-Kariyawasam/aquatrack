@@ -100,3 +100,124 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to add meet" }, { status: 500 });
   }
 }
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const authUser = getUserFromRequest(req);
+    if (!authUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (authUser.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const body = await req.json();
+    const meetId = String(body.meetId || "").trim();
+    const name = normalizeMeetName(String(body.name || ""));
+    const type = String(body.type || "")
+      .trim()
+      .toLowerCase();
+
+    if (!meetId) {
+      return NextResponse.json(
+        { error: "meetId is required" },
+        { status: 400 },
+      );
+    }
+
+    if (!name) {
+      return NextResponse.json(
+        { error: "Meet name is required" },
+        { status: 400 },
+      );
+    }
+
+    if (type !== "meet" && type !== "trial") {
+      return NextResponse.json({ error: "Invalid meet type" }, { status: 400 });
+    }
+
+    await dbConnect();
+
+    const normalizedName = name.toLowerCase();
+    const duplicate = await MeetCatalog.findOne({
+      normalizedName,
+      _id: { $ne: meetId },
+    }).lean();
+
+    if (duplicate) {
+      return NextResponse.json(
+        { error: "Another catalog entry already uses this name" },
+        { status: 409 },
+      );
+    }
+
+    const meet = await MeetCatalog.findByIdAndUpdate(
+      meetId,
+      {
+        $set: {
+          name,
+          normalizedName,
+          type,
+        },
+      },
+      { new: true },
+    ).lean();
+
+    if (!meet) {
+      return NextResponse.json(
+        { error: "Catalog entry not found" },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({ success: true, meet });
+  } catch (error) {
+    console.error("Meets PATCH error:", error);
+    return NextResponse.json(
+      { error: "Failed to update meet" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const authUser = getUserFromRequest(req);
+    if (!authUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (authUser.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const body = await req.json();
+    const meetId = String(body.meetId || "").trim();
+
+    if (!meetId) {
+      return NextResponse.json(
+        { error: "meetId is required" },
+        { status: 400 },
+      );
+    }
+
+    await dbConnect();
+
+    const deleted = await MeetCatalog.findByIdAndDelete(meetId).lean();
+    if (!deleted) {
+      return NextResponse.json(
+        { error: "Catalog entry not found" },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Meets DELETE error:", error);
+    return NextResponse.json(
+      { error: "Failed to delete meet" },
+      { status: 500 },
+    );
+  }
+}

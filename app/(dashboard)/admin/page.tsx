@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { Check, Pencil, X } from "lucide-react";
 import toast from "react-hot-toast";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -57,6 +57,11 @@ export default function AdminPage() {
   const [newMeetName, setNewMeetName] = useState("");
   const [newMeetType, setNewMeetType] = useState<"meet" | "trial">("meet");
   const [isAddingMeet, setIsAddingMeet] = useState(false);
+  const [editingMeetId, setEditingMeetId] = useState<string>("");
+  const [editMeetName, setEditMeetName] = useState("");
+  const [editMeetType, setEditMeetType] = useState<"meet" | "trial">("meet");
+  const [isUpdatingMeetId, setIsUpdatingMeetId] = useState<string | null>(null);
+  const [isDeletingMeetId, setIsDeletingMeetId] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -166,6 +171,85 @@ export default function AdminPage() {
       toast.error("Network error while adding meet");
     } finally {
       setIsAddingMeet(false);
+    }
+  };
+
+  const onStartEditMeet = (item: MeetCatalogItem) => {
+    setEditingMeetId(item._id);
+    setEditMeetName(item.name);
+    setEditMeetType(item.type);
+  };
+
+  const onCancelEditMeet = () => {
+    setEditingMeetId("");
+    setEditMeetName("");
+    setEditMeetType("meet");
+  };
+
+  const onSaveMeetEdit = async (meetId: string) => {
+    if (!editMeetName.trim()) {
+      toast.error("Meet name is required");
+      return;
+    }
+
+    setIsUpdatingMeetId(meetId);
+    try {
+      const response = await fetch("/api/meets", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          meetId,
+          name: editMeetName,
+          type: editMeetType,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.error || "Failed to update catalog entry");
+        return;
+      }
+
+      toast.success("Catalog entry updated");
+      onCancelEditMeet();
+      await loadData();
+    } catch {
+      toast.error("Network error while updating catalog entry");
+    } finally {
+      setIsUpdatingMeetId(null);
+    }
+  };
+
+  const onDeleteMeet = async (item: MeetCatalogItem) => {
+    const confirmed = window.confirm(`Delete catalog entry '${item.name}'?`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsDeletingMeetId(item._id);
+    try {
+      const response = await fetch("/api/meets", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ meetId: item._id }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.error || "Failed to delete catalog entry");
+        return;
+      }
+
+      toast.success("Catalog entry deleted");
+      if (editingMeetId === item._id) {
+        onCancelEditMeet();
+      }
+      await loadData();
+    } catch {
+      toast.error("Network error while deleting catalog entry");
+    } finally {
+      setIsDeletingMeetId(null);
     }
   };
 
@@ -458,16 +542,83 @@ export default function AdminPage() {
             ) : (
               <ul className="divide-y divide-primary-500/10">
                 {meetCatalog.map((item) => (
-                  <li
-                    key={item._id}
-                    className="px-3 py-2 flex items-center justify-between gap-2 text-sm"
-                  >
-                    <span className="text-slate-700 dark:text-gray-200">
-                      {item.name}
-                    </span>
-                    <span className="text-xs uppercase tracking-wide text-primary-300">
-                      {item.type}
-                    </span>
+                  <li key={item._id} className="px-3 py-2 text-sm">
+                    {editingMeetId === item._id ? (
+                      <div className="space-y-2">
+                        <Input
+                          value={editMeetName}
+                          onChange={(e) => setEditMeetName(e.target.value)}
+                          placeholder="Meet name"
+                        />
+                        <div className="flex items-center justify-between gap-2">
+                          <Select
+                            value={editMeetType}
+                            onChange={(e) =>
+                              setEditMeetType(
+                                e.target.value as "meet" | "trial",
+                              )
+                            }
+                            options={[
+                              { value: "meet", label: "Meet" },
+                              { value: "trial", label: "Trial" },
+                            ]}
+                          />
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => void onSaveMeetEdit(item._id)}
+                              disabled={isUpdatingMeetId === item._id}
+                              aria-label="Save catalog entry"
+                              title="Save catalog entry"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-green-500/40 bg-green-500/15 text-green-300 transition hover:bg-green-500/25 disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                              <Check size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={onCancelEditMeet}
+                              aria-label="Cancel edit"
+                              title="Cancel edit"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-400/40 bg-slate-500/10 text-slate-300 transition hover:bg-slate-500/20"
+                            >
+                              <X size={15} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-slate-700 dark:text-gray-200">
+                            {item.name}
+                          </p>
+                          <p className="text-xs uppercase tracking-wide text-primary-300">
+                            {item.type}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => onStartEditMeet(item)}
+                            aria-label="Edit catalog entry"
+                            title="Edit catalog entry"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-sky-500/40 bg-sky-500/15 text-sky-300 transition hover:bg-sky-500/25"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void onDeleteMeet(item)}
+                            disabled={isDeletingMeetId === item._id}
+                            aria-label="Delete catalog entry"
+                            title="Delete catalog entry"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/15 text-red-300 transition hover:bg-red-500/25 disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            <X size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>

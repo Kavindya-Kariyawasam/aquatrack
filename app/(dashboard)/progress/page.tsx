@@ -501,7 +501,7 @@ export default function ProgressPage() {
                 onBlur={() => {
                   setTimeout(() => setShowMeetSuggestions(false), 120);
                 }}
-                placeholder="Type to search or enter a new meet/trial name"
+                placeholder="Search or enter meet/trial name"
               />
 
               {showMeetSuggestions && meetSuggestions.length > 0 && (
