@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -36,6 +36,12 @@ type SwimmerDetailStats = {
   bestByEvent: Record<string, string>;
 };
 
+type MeetCatalogItem = {
+  _id: string;
+  name: string;
+  type: "trial" | "meet";
+};
+
 export default function ProgressPage() {
   const [role, setRole] = useState<Role>("swimmer");
   const [isRoleLoaded, setIsRoleLoaded] = useState(false);
@@ -46,6 +52,8 @@ export default function ProgressPage() {
   const [meetName, setMeetName] = useState("");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [meetCatalog, setMeetCatalog] = useState<MeetCatalogItem[]>([]);
+  const [showMeetSuggestions, setShowMeetSuggestions] = useState(false);
 
   const [timings, setTimings] = useState<Timing[]>([]);
   const [stats, setStats] = useState<{
@@ -80,6 +88,12 @@ export default function ProgressPage() {
       const user = await getAuthMeUser();
       const userRole = (user?.role || "swimmer") as Role;
       setRole(userRole);
+
+      const meetsRes = await fetch("/api/meets");
+      const meetsData = await meetsRes.json();
+      if (meetsRes.ok) {
+        setMeetCatalog(meetsData.meets || []);
+      }
 
       if (userRole === "swimmer") {
         const [timingsRes, statsRes] = await Promise.all([
@@ -118,6 +132,21 @@ export default function ProgressPage() {
     } finally {
       setIsRoleLoaded(true);
     }
+  };
+
+  const meetSuggestions = useMemo(() => {
+    const q = meetName.trim().toLowerCase();
+    if (!q) {
+      return meetCatalog;
+    }
+
+    return meetCatalog.filter((item) => item.name.toLowerCase().includes(q));
+  }, [meetCatalog, meetName]);
+
+  const onSelectMeet = (item: MeetCatalogItem) => {
+    setMeetName(item.name);
+    setType(item.type);
+    setShowMeetSuggestions(false);
   };
 
   useEffect(() => {
@@ -447,11 +476,57 @@ export default function ProgressPage() {
                 { value: "meet", label: "Meet" },
               ]}
             />
-            <Input
-              label="Meet Name"
-              value={meetName}
-              onChange={(e) => setMeetName(e.target.value)}
-            />
+            <div className="w-full relative">
+              <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
+                Meet Name
+              </label>
+              <input
+                className="input-field w-full"
+                value={meetName}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  setMeetName(nextValue);
+                  setShowMeetSuggestions(true);
+
+                  const exactMatch = meetCatalog.find(
+                    (item) =>
+                      item.name.toLowerCase() ===
+                      nextValue.trim().toLowerCase(),
+                  );
+                  if (exactMatch) {
+                    setType(exactMatch.type);
+                  }
+                }}
+                onFocus={() => setShowMeetSuggestions(true)}
+                onBlur={() => {
+                  setTimeout(() => setShowMeetSuggestions(false), 120);
+                }}
+                placeholder="Type to search or enter a new meet/trial name"
+              />
+
+              {showMeetSuggestions && meetSuggestions.length > 0 && (
+                <div className="absolute z-40 mt-1 max-h-52 w-full overflow-auto rounded-lg border border-primary-500/30 bg-white dark:bg-dark-card shadow-lg">
+                  {meetSuggestions.map((item) => (
+                    <button
+                      type="button"
+                      key={item._id}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-primary-500/10 flex items-center justify-between gap-2"
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        onSelectMeet(item);
+                      }}
+                    >
+                      <span className="text-slate-700 dark:text-gray-100">
+                        {item.name}
+                      </span>
+                      <span className="text-xs uppercase tracking-wide text-primary-300">
+                        {item.type}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <Input
               label="Notes"
               value={notes}

@@ -40,12 +40,23 @@ type AnnouncementItem = {
   createdAt: string;
 };
 
+type MeetCatalogItem = {
+  _id: string;
+  name: string;
+  type: "meet" | "trial";
+  createdAt: string;
+};
+
 export default function AdminPage() {
   const [users, setUsers] = useState<UserItem[]>([]);
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [overallStatsVisible, setOverallStatsVisible] = useState(false);
   const [aiGenerationEnabled, setAiGenerationEnabled] = useState(true);
+  const [meetCatalog, setMeetCatalog] = useState<MeetCatalogItem[]>([]);
+  const [newMeetName, setNewMeetName] = useState("");
+  const [newMeetType, setNewMeetType] = useState<"meet" | "trial">("meet");
+  const [isAddingMeet, setIsAddingMeet] = useState(false);
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -77,18 +88,20 @@ export default function AdminPage() {
 
   const loadData = async () => {
     try {
-      const [usersRes, attendanceRes, settingsRes, announcementsRes] =
+      const [usersRes, attendanceRes, settingsRes, announcementsRes, meetsRes] =
         await Promise.all([
           fetch("/api/users"),
           fetch("/api/attendance"),
           fetch("/api/settings"),
           fetch("/api/announcements?limit=30"),
+          fetch("/api/meets"),
         ]);
 
       const usersData = await usersRes.json();
       const attendanceData = await attendanceRes.json();
       const settingsData = await settingsRes.json();
       const announcementsData = await announcementsRes.json();
+      const meetsData = await meetsRes.json();
 
       if (usersRes.ok) {
         setUsers(usersData.users || []);
@@ -113,8 +126,46 @@ export default function AdminPage() {
       if (announcementsRes.ok) {
         setAnnouncements(announcementsData?.announcements || []);
       }
+
+      if (meetsRes.ok) {
+        setMeetCatalog(meetsData?.meets || []);
+      }
     } catch {
       toast.error("Failed to load admin data");
+    }
+  };
+
+  const onAddMeetCatalog = async () => {
+    if (!newMeetName.trim()) {
+      toast.error("Meet name is required");
+      return;
+    }
+
+    setIsAddingMeet(true);
+    try {
+      const response = await fetch("/api/meets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newMeetName,
+          type: newMeetType,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.error || "Failed to add meet");
+        return;
+      }
+
+      toast.success("Meet added");
+      setNewMeetName("");
+      setNewMeetType("meet");
+      await loadData();
+    } catch {
+      toast.error("Network error while adding meet");
+    } finally {
+      setIsAddingMeet(false);
     }
   };
 
@@ -337,7 +388,7 @@ export default function AdminPage() {
     <div className="space-y-6">
       <h1 className="section-heading">Admin</h1>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <Card>
           <h2 className="text-xl font-semibold text-primary-300 mb-3">
             Application Settings
@@ -370,6 +421,61 @@ export default function AdminPage() {
               Save Settings
             </Button>
           </div>
+        </Card>
+
+        <Card>
+          <h2 className="text-xl font-semibold text-primary-300 mb-3">
+            Meet / Trial Catalog
+          </h2>
+          <div className="space-y-3">
+            <Input
+              label="Name"
+              value={newMeetName}
+              onChange={(e) => setNewMeetName(e.target.value)}
+              placeholder="SLUG '25"
+            />
+            <Select
+              label="Type"
+              value={newMeetType}
+              onChange={(e) =>
+                setNewMeetType(e.target.value as "meet" | "trial")
+              }
+              options={[
+                { value: "meet", label: "Meet" },
+                { value: "trial", label: "Trial" },
+              ]}
+            />
+            <Button onClick={onAddMeetCatalog} isLoading={isAddingMeet}>
+              Add Catalog Entry
+            </Button>
+          </div>
+
+          <div className="mt-4 max-h-48 overflow-auto rounded border border-primary-500/20">
+            {meetCatalog.length === 0 ? (
+              <p className="p-3 text-sm text-gray-400">
+                No catalog entries yet.
+              </p>
+            ) : (
+              <ul className="divide-y divide-primary-500/10">
+                {meetCatalog.map((item) => (
+                  <li
+                    key={item._id}
+                    className="px-3 py-2 flex items-center justify-between gap-2 text-sm"
+                  >
+                    <span className="text-slate-700 dark:text-gray-200">
+                      {item.name}
+                    </span>
+                    <span className="text-xs uppercase tracking-wide text-primary-300">
+                      {item.type}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <p className="mt-2 text-xs text-slate-600 dark:text-gray-400">
+            Newest entries are shown first.
+          </p>
         </Card>
 
         <Card id="publish-announcement">
