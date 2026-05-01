@@ -40,6 +40,7 @@ type MeetCatalogItem = {
   _id: string;
   name: string;
   type: "trial" | "meet";
+  date?: string;
 };
 
 export default function ProgressPage() {
@@ -146,6 +147,10 @@ export default function ProgressPage() {
   const onSelectMeet = (item: MeetCatalogItem) => {
     setMeetName(item.name);
     setType(item.type);
+    if (item.date) {
+      // store as yyyy-mm-dd for date inputs
+      setDate(new Date(item.date).toISOString().slice(0, 10));
+    }
     setShowMeetSuggestions(false);
   };
 
@@ -461,21 +466,6 @@ export default function ProgressPage() {
               onChange={(e) => setTime(e.target.value)}
               placeholder="1:12.34"
             />
-            <Input
-              label="Date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-            <Select
-              label="Type"
-              value={type}
-              onChange={(e) => setType(e.target.value as "trial" | "meet")}
-              options={[
-                { value: "trial", label: "Trial" },
-                { value: "meet", label: "Meet" },
-              ]}
-            />
             <div className="w-full relative">
               <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
                 Meet Name
@@ -495,6 +485,11 @@ export default function ProgressPage() {
                   );
                   if (exactMatch) {
                     setType(exactMatch.type);
+                    if (exactMatch.date) {
+                      setDate(
+                        new Date(exactMatch.date).toISOString().slice(0, 10),
+                      );
+                    }
                   }
                 }}
                 onFocus={() => setShowMeetSuggestions(true)}
@@ -527,6 +522,21 @@ export default function ProgressPage() {
                 </div>
               )}
             </div>
+            <Input
+              label="Date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+            <Select
+              label="Type"
+              value={type}
+              onChange={(e) => setType(e.target.value as "trial" | "meet")}
+              options={[
+                { value: "trial", label: "Trial" },
+                { value: "meet", label: "Meet" },
+              ]}
+            />
             <Input
               label="Notes"
               value={notes}

@@ -44,6 +44,7 @@ type MeetCatalogItem = {
   _id: string;
   name: string;
   type: "meet" | "trial";
+  date?: string;
   createdAt: string;
 };
 
@@ -56,10 +57,12 @@ export default function AdminPage() {
   const [meetCatalog, setMeetCatalog] = useState<MeetCatalogItem[]>([]);
   const [newMeetName, setNewMeetName] = useState("");
   const [newMeetType, setNewMeetType] = useState<"meet" | "trial">("meet");
+  const [newMeetDate, setNewMeetDate] = useState("");
   const [isAddingMeet, setIsAddingMeet] = useState(false);
   const [editingMeetId, setEditingMeetId] = useState<string>("");
   const [editMeetName, setEditMeetName] = useState("");
   const [editMeetType, setEditMeetType] = useState<"meet" | "trial">("meet");
+  const [editMeetDate, setEditMeetDate] = useState("");
   const [isUpdatingMeetId, setIsUpdatingMeetId] = useState<string | null>(null);
   const [isDeletingMeetId, setIsDeletingMeetId] = useState<string | null>(null);
 
@@ -154,6 +157,7 @@ export default function AdminPage() {
         body: JSON.stringify({
           name: newMeetName,
           type: newMeetType,
+          date: newMeetDate || undefined,
         }),
       });
 
@@ -166,6 +170,7 @@ export default function AdminPage() {
       toast.success("Meet added");
       setNewMeetName("");
       setNewMeetType("meet");
+      setNewMeetDate("");
       await loadData();
     } catch {
       toast.error("Network error while adding meet");
@@ -178,12 +183,14 @@ export default function AdminPage() {
     setEditingMeetId(item._id);
     setEditMeetName(item.name);
     setEditMeetType(item.type);
+    setEditMeetDate(item.date ? item.date.slice(0, 10) : "");
   };
 
   const onCancelEditMeet = () => {
     setEditingMeetId("");
     setEditMeetName("");
     setEditMeetType("meet");
+    setEditMeetDate("");
   };
 
   const onSaveMeetEdit = async (meetId: string) => {
@@ -201,6 +208,7 @@ export default function AdminPage() {
           meetId,
           name: editMeetName,
           type: editMeetType,
+          date: editMeetDate || undefined,
         }),
       });
 
@@ -518,6 +526,12 @@ export default function AdminPage() {
               onChange={(e) => setNewMeetName(e.target.value)}
               placeholder="SLUG '25"
             />
+            <Input
+              label="Date (optional)"
+              type="date"
+              value={newMeetDate}
+              onChange={(e) => setNewMeetDate(e.target.value)}
+            />
             <Select
               label="Type"
               value={newMeetType}
@@ -549,6 +563,12 @@ export default function AdminPage() {
                           value={editMeetName}
                           onChange={(e) => setEditMeetName(e.target.value)}
                           placeholder="Meet name"
+                        />
+                        <Input
+                          label="Date (optional)"
+                          type="date"
+                          value={editMeetDate}
+                          onChange={(e) => setEditMeetDate(e.target.value)}
                         />
                         <div className="flex items-center justify-between gap-2">
                           <Select
@@ -593,7 +613,10 @@ export default function AdminPage() {
                             {item.name}
                           </p>
                           <p className="text-xs uppercase tracking-wide text-primary-300">
-                            {item.type}
+                            {item.type}{" "}
+                            {item.date
+                              ? `· ${new Date(item.date).toLocaleDateString()}`
+                              : ""}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">

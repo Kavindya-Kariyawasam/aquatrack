@@ -5,6 +5,7 @@ export interface IMeetCatalog {
   name: string;
   normalizedName: string;
   type: "meet" | "trial";
+  date?: Date;
   createdBy?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -29,6 +30,10 @@ const meetCatalogSchema = new Schema<IMeetCatalog>(
       type: String,
       enum: ["meet", "trial"],
       required: true,
+    },
+    date: {
+      type: Date,
+      required: false,
     },
     createdBy: {
       type: String,

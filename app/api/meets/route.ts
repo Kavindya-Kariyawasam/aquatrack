@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
       : {};
 
     const meets = await MeetCatalog.find(filter)
-      .select("name type createdAt")
+      .select("name type date createdAt")
       .sort({ createdAt: -1 })
       .limit(200)
       .lean();
@@ -63,6 +63,15 @@ export async function POST(req: NextRequest) {
     const type = String(body.type || "")
       .trim()
       .toLowerCase();
+    const dateRaw = body.date;
+    let date: Date | undefined = undefined;
+    if (dateRaw) {
+      const parsed = new Date(String(dateRaw));
+      if (isNaN(parsed.getTime())) {
+        return NextResponse.json({ error: "Invalid date" }, { status: 400 });
+      }
+      date = parsed;
+    }
 
     if (!name) {
       return NextResponse.json(
@@ -91,6 +100,7 @@ export async function POST(req: NextRequest) {
       name,
       normalizedName,
       type,
+      date,
       createdBy: authUser.userId,
     });
 
@@ -118,6 +128,15 @@ export async function PATCH(req: NextRequest) {
     const type = String(body.type || "")
       .trim()
       .toLowerCase();
+    const dateRaw = body.date;
+    let date: Date | undefined = undefined;
+    if (dateRaw) {
+      const parsed = new Date(String(dateRaw));
+      if (isNaN(parsed.getTime())) {
+        return NextResponse.json({ error: "Invalid date" }, { status: 400 });
+      }
+      date = parsed;
+    }
 
     if (!meetId) {
       return NextResponse.json(
@@ -152,14 +171,13 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
+    const setObj: any = { name, normalizedName, type };
+    if (date !== undefined) setObj.date = date;
+
     const meet = await MeetCatalog.findByIdAndUpdate(
       meetId,
       {
-        $set: {
-          name,
-          normalizedName,
-          type,
-        },
+        $set: setObj,
       },
       { new: true },
     ).lean();
