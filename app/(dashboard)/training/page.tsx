@@ -536,7 +536,7 @@ export default function TrainingPage() {
                   return (
                     <div
                       key={`empty-${index}`}
-                      className="h-24 sm:h-20 rounded border border-transparent"
+                      className="min-h-24 sm:min-h-20 rounded border border-transparent"
                     />
                   );
                 }
@@ -589,7 +589,7 @@ export default function TrainingPage() {
                     title={
                       titleParts.length > 0 ? titleParts.join(" | ") : undefined
                     }
-                    className={`h-24 sm:h-20 rounded border p-2 text-left transition overflow-hidden ${
+                    className={`min-h-24 sm:min-h-20 rounded border p-2 text-left transition ${
                       isSelected
                         ? "border-primary-300 bg-primary-500/10"
                         : holidayForDate
@@ -602,18 +602,8 @@ export default function TrainingPage() {
                     <p className="text-sm font-semibold text-slate-800 dark:text-gray-100">
                       {Number(cellDate.slice(-2))}
                     </p>
-                    {holidayForDate && (
-                      <p className="text-[10px] uppercase tracking-wide text-yellow-600 dark:text-yellow-300">
-                        Holiday
-                      </p>
-                    )}
-                    {specialForDate && (
-                      <p className="text-[10px] uppercase tracking-wide text-sky-600 dark:text-sky-300">
-                        {specialDisplay}
-                      </p>
-                    )}
                     <p
-                      className={`mt-1 text-[11px] leading-tight max-w-full truncate ${
+                      className={`mt-1 text-[11px] leading-tight max-w-full whitespace-normal break-words ${
                         hasSet
                           ? "inline-block rounded px-1.5 py-0.5 font-semibold bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-green-300"
                           : holidayForDate
@@ -626,7 +616,7 @@ export default function TrainingPage() {
                       {hasSet
                         ? `${count} set${count > 1 ? "s" : ""}`
                         : holidayForDate
-                          ? "No practice"
+                          ? "Holiday"
                           : specialForDate
                             ? specialDisplay
                             : "No set"}
