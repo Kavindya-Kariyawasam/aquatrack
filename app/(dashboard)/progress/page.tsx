@@ -408,7 +408,7 @@ export default function ProgressPage() {
                 {swimmerTimings.length === 0 ? (
                   <p className="text-gray-400 text-sm">No timings found.</p>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="max-h-[70vh] overflow-auto">
                     <table className="data-table">
                       <thead>
                         <tr>
@@ -576,7 +576,7 @@ export default function ProgressPage() {
         {timings.length === 0 ? (
           <p className="text-gray-400">No timings yet.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="max-h-[70vh] overflow-auto">
             <table className="data-table">
               <thead>
                 <tr>

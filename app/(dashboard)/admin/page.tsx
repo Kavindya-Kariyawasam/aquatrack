@@ -30,16 +30,6 @@ type PendingRequest = {
   status: string;
 };
 
-type AnnouncementItem = {
-  _id: string;
-  title: string;
-  content: string;
-  priority: "low" | "medium" | "high";
-  status?: "active" | "cancelled" | "completed";
-  editedAt?: string;
-  createdAt: string;
-};
-
 type MeetCatalogItem = {
   _id: string;
   name: string;
@@ -51,7 +41,6 @@ type MeetCatalogItem = {
 export default function AdminPage() {
   const [users, setUsers] = useState<UserItem[]>([]);
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
-  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [overallStatsVisible, setOverallStatsVisible] = useState(false);
   const [aiGenerationEnabled, setAiGenerationEnabled] = useState(true);
   const [meetCatalog, setMeetCatalog] = useState<MeetCatalogItem[]>([]);
@@ -70,11 +59,6 @@ export default function AdminPage() {
   const [content, setContent] = useState("");
   const [priority, setPriority] = useState("medium");
   const [isSaving, setIsSaving] = useState(false);
-  const [editingAnnouncementId, setEditingAnnouncementId] = useState("");
-  const [editTitle, setEditTitle] = useState("");
-  const [editContent, setEditContent] = useState("");
-  const [editPriority, setEditPriority] = useState("medium");
-  const [isUpdatingAnnouncement, setIsUpdatingAnnouncement] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   const sortedUsers = useMemo(() => {
@@ -96,19 +80,17 @@ export default function AdminPage() {
 
   const loadData = async () => {
     try {
-      const [usersRes, attendanceRes, settingsRes, announcementsRes, meetsRes] =
+      const [usersRes, attendanceRes, settingsRes, meetsRes] =
         await Promise.all([
           fetch("/api/users"),
           fetch("/api/attendance"),
           fetch("/api/settings"),
-          fetch("/api/announcements?limit=30"),
           fetch("/api/meets"),
         ]);
 
       const usersData = await usersRes.json();
       const attendanceData = await attendanceRes.json();
       const settingsData = await settingsRes.json();
-      const announcementsData = await announcementsRes.json();
       const meetsData = await meetsRes.json();
 
       if (usersRes.ok) {
@@ -129,10 +111,6 @@ export default function AdminPage() {
         setAiGenerationEnabled(
           settingsData?.settings?.aiGenerationEnabled !== false,
         );
-      }
-
-      if (announcementsRes.ok) {
-        setAnnouncements(announcementsData?.announcements || []);
       }
 
       if (meetsRes.ok) {
@@ -343,59 +321,6 @@ export default function AdminPage() {
     }
   };
 
-  const onStartEditAnnouncement = (announcement: AnnouncementItem) => {
-    setEditingAnnouncementId(announcement._id);
-    setEditTitle(announcement.title);
-    setEditContent(announcement.content);
-    setEditPriority(announcement.priority);
-  };
-
-  const onCancelEditAnnouncement = () => {
-    setEditingAnnouncementId("");
-    setEditTitle("");
-    setEditContent("");
-    setEditPriority("medium");
-  };
-
-  const onSaveAnnouncementEdit = async () => {
-    if (!editingAnnouncementId) {
-      return;
-    }
-
-    if (!editTitle.trim() || !editContent.trim()) {
-      toast.error("Title and content are required");
-      return;
-    }
-
-    setIsUpdatingAnnouncement(true);
-    try {
-      const response = await fetch("/api/announcements", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          announcementId: editingAnnouncementId,
-          title: editTitle,
-          content: editContent,
-          priority: editPriority,
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        toast.error(data.error || "Failed to edit announcement");
-        return;
-      }
-
-      toast.success("Announcement updated");
-      onCancelEditAnnouncement();
-      await loadData();
-    } catch {
-      toast.error("Network error while updating announcement");
-    } finally {
-      setIsUpdatingAnnouncement(false);
-    }
-  };
-
   const onSetApproval = async (userId: string, isApproved: boolean) => {
     try {
       const response = await fetch("/api/users", {
@@ -548,7 +473,7 @@ export default function AdminPage() {
             </Button>
           </div>
 
-          <div className="mt-4 max-h-[11rem] overflow-auto rounded border border-primary-500/20 pr-1">
+          <div className="mt-4 max-h-64 overflow-auto rounded border border-primary-500/20 pr-1">
             {meetCatalog.length === 0 ? (
               <p className="p-3 text-sm text-gray-400">
                 No catalog entries yet.
@@ -813,96 +738,6 @@ export default function AdminPage() {
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
-      </Card>
-
-      <Card>
-        <h2 className="text-xl font-semibold text-primary-300 mb-3">
-          Manage Announcements
-        </h2>
-        {announcements.length === 0 ? (
-          <p className="text-gray-400">No announcements found.</p>
-        ) : (
-          <div className="space-y-3">
-            {announcements.map((announcement) => {
-              const isEditing = editingAnnouncementId === announcement._id;
-
-              return (
-                <div
-                  key={announcement._id}
-                  className="border border-primary-500/20 rounded-lg p-3"
-                >
-                  {isEditing ? (
-                    <div className="space-y-3">
-                      <Input
-                        label="Title"
-                        value={editTitle}
-                        onChange={(e) => setEditTitle(e.target.value)}
-                      />
-                      <textarea
-                        className="input-field w-full min-h-28"
-                        value={editContent}
-                        onChange={(e) => setEditContent(e.target.value)}
-                      />
-                      <Select
-                        label="Priority"
-                        value={editPriority}
-                        onChange={(e) => setEditPriority(e.target.value)}
-                        options={[
-                          { value: "low", label: "Low" },
-                          { value: "medium", label: "Medium" },
-                          { value: "high", label: "High" },
-                        ]}
-                      />
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          onClick={onSaveAnnouncementEdit}
-                          isLoading={isUpdatingAnnouncement}
-                        >
-                          Save Changes
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          onClick={onCancelEditAnnouncement}
-                          disabled={isUpdatingAnnouncement}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-between gap-3 mb-2">
-                        <h3 className="font-semibold text-slate-900 dark:text-white">
-                          {announcement.title}
-                        </h3>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs uppercase tracking-wide text-primary-300">
-                            {announcement.priority}
-                          </span>
-                          <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-gray-500">
-                            {announcement.editedAt ? "Edited" : "Original"}
-                          </span>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() =>
-                              onStartEditAnnouncement(announcement)
-                            }
-                          >
-                            Edit
-                          </Button>
-                        </div>
-                      </div>
-                      <p className="text-sm text-slate-700 dark:text-gray-300 whitespace-pre-wrap">
-                        {announcement.content}
-                      </p>
-                    </>
-                  )}
-                </div>
-              );
-            })}
           </div>
         )}
       </Card>

@@ -154,6 +154,12 @@ export default function AttendancePage() {
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [leaveFilterMode, setLeaveFilterMode] = useState<"all" | "month">(
+    "all",
+  );
+  const [leaveMonth, setLeaveMonth] = useState(
+    new Date().toISOString().slice(0, 7),
+  );
 
   const [monthFilter, setMonthFilter] = useState(
     new Date().toISOString().slice(0, 7),
@@ -662,6 +668,20 @@ export default function AttendancePage() {
       .sort((a, b) => a.userName?.localeCompare(b.userName || "") || 0);
   }, [calendarRecords, managerDate, managerType]);
 
+  const filteredLeaveRecords = useMemo(() => {
+    if (leaveFilterMode === "all") {
+      return records;
+    }
+
+    if (!leaveMonth) {
+      return records;
+    }
+
+    return records.filter((record) =>
+      toIsoDate(record.date).startsWith(leaveMonth),
+    );
+  }, [leaveFilterMode, leaveMonth, records]);
+
   const selectedStatusByUser = useMemo(() => {
     const map = new Map<string, AttendanceRecord["status"]>();
     for (const record of selectedDateRecords) {
@@ -1093,10 +1113,35 @@ export default function AttendancePage() {
           <h2 className="text-xl font-semibold text-primary-300 mb-3">
             My Leave Requests
           </h2>
-          {records.length === 0 ? (
-            <p className="text-gray-400">No leave requests found.</p>
+          <div className="flex flex-wrap items-end gap-3 mb-3">
+            <Select
+              label="View"
+              value={leaveFilterMode}
+              onChange={(e) =>
+                setLeaveFilterMode(e.target.value as "all" | "month")
+              }
+              options={[
+                { value: "all", label: "All" },
+                { value: "month", label: "By Month" },
+              ]}
+            />
+            {leaveFilterMode === "month" && (
+              <Input
+                label="Month"
+                type="month"
+                value={leaveMonth}
+                onChange={(e) => setLeaveMonth(e.target.value)}
+              />
+            )}
+          </div>
+          {filteredLeaveRecords.length === 0 ? (
+            <p className="text-gray-400">
+              {leaveFilterMode === "month"
+                ? "No leave requests for the selected month."
+                : "No leave requests found."}
+            </p>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="max-h-[70vh] overflow-auto">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -1108,7 +1153,7 @@ export default function AttendancePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {records.map((record) => (
+                  {filteredLeaveRecords.map((record) => (
                     <tr key={record._id}>
                       <td>{formatDate(record.date)}</td>
                       <td className="capitalize">{record.type}</td>
