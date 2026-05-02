@@ -1361,7 +1361,7 @@ export default function AttendancePage() {
             {swimmers.length === 0 ? (
               <p className="text-gray-400 text-sm">No swimmers found.</p>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="max-h-[70vh] overflow-auto">
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -1453,7 +1453,7 @@ export default function AttendancePage() {
             {selectedDateRecords.length === 0 ? (
               <p className="text-gray-400 text-sm">No records marked yet.</p>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="max-h-[70vh] overflow-auto">
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -1489,7 +1489,7 @@ export default function AttendancePage() {
         {records.length === 0 ? (
           <p className="text-gray-400">No attendance records found.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="max-h-[70vh] overflow-auto">
             <table className="data-table">
               <thead>
                 <tr>
@@ -1551,7 +1551,7 @@ export default function AttendancePage() {
         {summaryRows.length === 0 ? (
           <p className="text-gray-400">No swimmer summary for this month.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="max-h-[70vh] overflow-auto">
             <table className="data-table">
               <thead>
                 <tr>
@@ -1644,7 +1644,7 @@ export default function AttendancePage() {
             <Button onClick={addHoliday}>Add / Update Holiday</Button>
           </div>
 
-          <div className="mt-4 space-y-2 max-h-52 overflow-auto">
+          <div className="mt-4 space-y-2 max-h-64 overflow-auto">
             {holidays.length === 0 ? (
               <p className="text-gray-400">No holidays configured.</p>
             ) : (
@@ -1738,7 +1738,7 @@ export default function AttendancePage() {
             <Button onClick={addSpecialDate}>Add / Update Special Date</Button>
           </div>
 
-          <div className="mt-4 space-y-2 max-h-52 overflow-auto">
+          <div className="mt-4 space-y-2 max-h-64 overflow-auto">
             {specialDates.length === 0 ? (
               <p className="text-gray-400">No special dates configured.</p>
             ) : (

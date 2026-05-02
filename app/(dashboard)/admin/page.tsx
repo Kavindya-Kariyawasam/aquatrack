@@ -692,7 +692,7 @@ export default function AdminPage() {
         {pendingRequests.length === 0 ? (
           <p className="text-gray-400">No pending requests.</p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[70vh] overflow-auto pr-1">
             {pendingRequests.map((record) => (
               <div
                 key={record._id}
@@ -734,7 +734,7 @@ export default function AdminPage() {
         {users.length === 0 ? (
           <p className="text-gray-400">No users found.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="max-h-[70vh] overflow-auto">
             <table className="data-table">
               <thead>
                 <tr>

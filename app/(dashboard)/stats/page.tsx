@@ -253,7 +253,7 @@ export default function StatsPage() {
           {Object.keys(leaderboardByEvent).length === 0 ? (
             <p className="text-gray-400">No team leaderboard data available.</p>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[70vh] overflow-auto pr-1">
               {Object.entries(leaderboardByEvent).map(([eventName, rows]) => (
                 <div
                   key={eventName}
