@@ -44,7 +44,22 @@ type SettingsResponse = {
       reason?: string;
       sessionType: "swimming" | "land" | "none";
     }>;
+    specialDates?: Array<{
+      date: string;
+      label?: string;
+      category: "meet" | "trial" | "team-event" | "other";
+      sessionType: "swimming" | "land" | "none";
+    }>;
   };
+};
+
+type SpecialDateCategory = "meet" | "trial" | "team-event" | "other";
+
+type SpecialDateItem = {
+  date: string;
+  label?: string;
+  category: SpecialDateCategory;
+  sessionType: "swimming" | "land" | "none";
 };
 
 type SwimmerOption = {
@@ -88,6 +103,13 @@ const STATUS_BADGE_STYLES: Record<string, string> = {
   "absent-approved": "bg-green-500/15 text-green-300 border-green-500/30",
   "absent-unrequested": "bg-red-500/15 text-red-300 border-red-500/30",
   present: "bg-blue-500/15 text-blue-300 border-blue-500/30",
+};
+
+const SPECIAL_DATE_LABELS: Record<SpecialDateCategory, string> = {
+  meet: "Meet",
+  trial: "Trial",
+  "team-event": "Team Event",
+  other: "Special",
 };
 
 const WEEKDAYS = [
@@ -171,6 +193,7 @@ export default function AttendancePage() {
       sessionType: "swimming" | "land" | "none";
     }>
   >([]);
+  const [specialDates, setSpecialDates] = useState<SpecialDateItem[]>([]);
   const [holidayDate, setHolidayDate] = useState(
     new Date().toISOString().slice(0, 10),
   );
@@ -179,6 +202,16 @@ export default function AttendancePage() {
     "none",
   );
   const [showAllHolidays, setShowAllHolidays] = useState(false);
+  const [specialDate, setSpecialDate] = useState(
+    new Date().toISOString().slice(0, 10),
+  );
+  const [specialLabel, setSpecialLabel] = useState("");
+  const [specialCategory, setSpecialCategory] =
+    useState<SpecialDateCategory>("meet");
+  const [specialSessionType, setSpecialSessionType] = useState<
+    "swimming" | "land" | "none"
+  >("none");
+  const [showAllSpecialDates, setShowAllSpecialDates] = useState(false);
 
   const isManager = role === "admin" || role === "coach";
 
@@ -326,6 +359,19 @@ export default function AttendancePage() {
             .sort((a, b) => b.date.localeCompare(a.date)),
         );
       }
+
+      if (Array.isArray(data.settings.specialDates)) {
+        setSpecialDates(
+          data.settings.specialDates
+            .map((item) => ({
+              date: toIsoDate(item.date),
+              label: item.label || "",
+              category: item.category,
+              sessionType: item.sessionType,
+            }))
+            .sort((a, b) => b.date.localeCompare(a.date)),
+        );
+      }
     } catch {
       toast.error("Failed to load attendance settings");
     }
@@ -444,6 +490,7 @@ export default function AttendancePage() {
   const saveAttendanceSettings = async (
     nextSchedule = weeklySchedule,
     nextHolidays = holidays,
+    nextSpecialDates = specialDates,
   ) => {
     try {
       const response = await fetch("/api/settings", {
@@ -452,6 +499,7 @@ export default function AttendancePage() {
         body: JSON.stringify({
           weeklySchedule: nextSchedule,
           holidays: nextHolidays,
+          specialDates: nextSpecialDates,
         }),
       });
 
@@ -498,6 +546,59 @@ export default function AttendancePage() {
     const saved = await saveAttendanceSettings(weeklySchedule, nextHolidays);
     if (saved) {
       setHolidays(nextHolidays);
+    }
+  };
+
+  const specialKey = (item: SpecialDateItem) =>
+    `${item.date}-${item.category}-${item.sessionType}-${item.label || ""}`;
+
+  const addSpecialDate = async () => {
+    if (!specialDate) {
+      toast.error("Special date is required");
+      return;
+    }
+
+    const nextSpecialDates = [
+      ...specialDates.filter(
+        (item) =>
+          specialKey(item) !==
+          specialKey({
+            date: specialDate,
+            category: specialCategory,
+            sessionType: specialSessionType,
+            label: specialLabel.trim(),
+          }),
+      ),
+      {
+        date: specialDate,
+        label: specialLabel.trim(),
+        category: specialCategory,
+        sessionType: specialSessionType,
+      },
+    ].sort((a, b) => b.date.localeCompare(a.date));
+
+    const saved = await saveAttendanceSettings(
+      weeklySchedule,
+      holidays,
+      nextSpecialDates,
+    );
+    if (saved) {
+      setSpecialDates(nextSpecialDates);
+      setSpecialLabel("");
+    }
+  };
+
+  const removeSpecialDate = async (target: SpecialDateItem) => {
+    const nextSpecialDates = specialDates.filter(
+      (item) => specialKey(item) !== specialKey(target),
+    );
+    const saved = await saveAttendanceSettings(
+      weeklySchedule,
+      holidays,
+      nextSpecialDates,
+    );
+    if (saved) {
+      setSpecialDates(nextSpecialDates);
     }
   };
 
@@ -582,15 +683,26 @@ export default function AttendancePage() {
       );
     });
 
+    const special = specialDates.find((item) => {
+      return (
+        item.date === managerDate &&
+        (item.sessionType === "none" || item.sessionType === managerType)
+      );
+    });
+
     return {
       weekday: weekdayKey,
       isScheduled,
       holiday,
+      special,
       blocked: !isScheduled || Boolean(holiday),
     };
-  }, [holidays, managerDate, managerType, weeklySchedule]);
+  }, [holidays, managerDate, managerType, specialDates, weeklySchedule]);
 
   const visibleHolidays = showAllHolidays ? holidays : holidays.slice(0, 5);
+  const visibleSpecialDates = showAllSpecialDates
+    ? specialDates
+    : specialDates.slice(0, 5);
 
   const swimmerDayStatuses = useMemo(() => {
     const map = new Map<
@@ -804,99 +916,136 @@ export default function AttendancePage() {
             holidays/no-practice days.
           </p>
 
-          <div className="grid grid-cols-7 gap-2 text-xs uppercase tracking-wide text-slate-500 dark:text-gray-400 mb-2">
-            <p>Mon</p>
-            <p>Tue</p>
-            <p>Wed</p>
-            <p>Thu</p>
-            <p>Fri</p>
-            <p>Sat</p>
-            <p>Sun</p>
-          </div>
+          <div className="overflow-x-auto -mx-2 sm:mx-0">
+            <div className="min-w-[560px] sm:min-w-0 px-2 sm:px-0">
+              <div className="grid grid-cols-7 gap-2 text-xs uppercase tracking-wide text-slate-500 dark:text-gray-400 mb-2">
+                <p>Mon</p>
+                <p>Tue</p>
+                <p>Wed</p>
+                <p>Thu</p>
+                <p>Fri</p>
+                <p>Sat</p>
+                <p>Sun</p>
+              </div>
 
-          <div className="grid grid-cols-7 gap-2">
-            {monthGrid.map((cellDate, index) => {
-              if (!cellDate) {
-                return (
-                  <div
-                    key={`swimmer-empty-${index}`}
-                    className="h-24 rounded border border-transparent"
-                  />
-                );
-              }
-
-              const dayNumber = Number(cellDate.slice(-2));
-              const dayStatuses = swimmerDayStatuses.get(cellDate);
-              const holidayForDate = holidays.find(
-                (item) => item.date === cellDate,
-              );
-
-              return (
-                <div
-                  key={`swimmer-${cellDate}`}
-                  className={`h-24 rounded border p-2 ${
-                    holidayForDate
-                      ? "border-yellow-500/40 bg-yellow-500/10"
-                      : "border-primary-500/20"
-                  }`}
-                  title={
-                    holidayForDate
-                      ? `Holiday: ${holidayForDate.reason || "No reason provided"}`
-                      : undefined
+              <div className="grid grid-cols-7 gap-2">
+                {monthGrid.map((cellDate, index) => {
+                  if (!cellDate) {
+                    return (
+                      <div
+                        key={`swimmer-empty-${index}`}
+                        className="h-28 sm:h-24 rounded border border-transparent"
+                      />
+                    );
                   }
-                >
-                  <p className="text-sm font-semibold text-slate-800 dark:text-gray-100">
-                    {dayNumber}
-                  </p>
-                  {holidayForDate && (
-                    <p className="text-[10px] uppercase tracking-wide text-yellow-600 dark:text-yellow-300">
-                      Holiday
-                    </p>
-                  )}
-                  <div className="mt-1 space-y-1 text-[10px]">
-                    <p className="text-slate-600 dark:text-gray-400">
-                      S:{" "}
-                      {dayStatuses?.swimming ? (
-                        <span
-                          title={
-                            STATUS_LABELS[dayStatuses.swimming] ||
-                            dayStatuses.swimming
-                          }
-                          className={`inline-block rounded border px-1 ${
-                            STATUS_BADGE_STYLES[dayStatuses.swimming] ||
-                            "border-primary-500/20 text-gray-300"
-                          }`}
-                        >
-                          {STATUS_SHORT_LABELS[dayStatuses.swimming] ||
-                            dayStatuses.swimming}
-                        </span>
-                      ) : (
-                        "-"
+
+                  const dayNumber = Number(cellDate.slice(-2));
+                  const dayStatuses = swimmerDayStatuses.get(cellDate);
+                  const holidayForDate = holidays.find(
+                    (item) => item.date === cellDate,
+                  );
+                  const specialForDate = specialDates.find(
+                    (item) => item.date === cellDate,
+                  );
+                  const specialLabel = specialForDate
+                    ? specialForDate.label ||
+                      SPECIAL_DATE_LABELS[specialForDate.category]
+                    : "";
+                  const specialSessionSuffix =
+                    specialForDate && specialForDate.sessionType !== "none"
+                      ? ` (${specialForDate.sessionType === "swimming" ? "Swim" : "Land"})`
+                      : "";
+                  const specialDisplay = specialLabel
+                    ? `${specialLabel}${specialSessionSuffix}`
+                    : "";
+                  const titleParts = [] as string[];
+
+                  if (holidayForDate) {
+                    titleParts.push(
+                      `Holiday: ${holidayForDate.reason || "No reason provided"}`,
+                    );
+                  }
+
+                  if (specialDisplay) {
+                    titleParts.push(`Special: ${specialDisplay}`);
+                  }
+
+                  return (
+                    <div
+                      key={`swimmer-${cellDate}`}
+                      className={`h-28 sm:h-24 rounded border p-2 overflow-hidden ${
+                        holidayForDate
+                          ? "border-yellow-500/40 bg-yellow-500/10"
+                          : specialForDate
+                            ? "border-sky-500/40 bg-sky-500/10"
+                            : "border-primary-500/20"
+                      }`}
+                      title={
+                        titleParts.length > 0
+                          ? titleParts.join(" | ")
+                          : undefined
+                      }
+                    >
+                      <p className="text-sm font-semibold text-slate-800 dark:text-gray-100">
+                        {dayNumber}
+                      </p>
+                      {holidayForDate && (
+                        <p className="text-[10px] uppercase tracking-wide text-yellow-600 dark:text-yellow-300">
+                          Holiday
+                        </p>
                       )}
-                    </p>
-                    <p className="text-slate-600 dark:text-gray-400">
-                      L:{" "}
-                      {dayStatuses?.land ? (
-                        <span
-                          title={
-                            STATUS_LABELS[dayStatuses.land] || dayStatuses.land
-                          }
-                          className={`inline-block rounded border px-1 ${
-                            STATUS_BADGE_STYLES[dayStatuses.land] ||
-                            "border-primary-500/20 text-gray-300"
-                          }`}
-                        >
-                          {STATUS_SHORT_LABELS[dayStatuses.land] ||
-                            dayStatuses.land}
-                        </span>
-                      ) : (
-                        "-"
+                      {specialForDate && (
+                        <p className="text-[10px] uppercase tracking-wide text-sky-600 dark:text-sky-300">
+                          {specialDisplay}
+                        </p>
                       )}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
+                      <div className="mt-1 space-y-1 text-[10px]">
+                        <p className="text-slate-600 dark:text-gray-400">
+                          S:{" "}
+                          {dayStatuses?.swimming ? (
+                            <span
+                              title={
+                                STATUS_LABELS[dayStatuses.swimming] ||
+                                dayStatuses.swimming
+                              }
+                              className={`inline-block rounded border px-1 ${
+                                STATUS_BADGE_STYLES[dayStatuses.swimming] ||
+                                "border-primary-500/20 text-gray-300"
+                              }`}
+                            >
+                              {STATUS_SHORT_LABELS[dayStatuses.swimming] ||
+                                dayStatuses.swimming}
+                            </span>
+                          ) : (
+                            "-"
+                          )}
+                        </p>
+                        <p className="text-slate-600 dark:text-gray-400">
+                          L:{" "}
+                          {dayStatuses?.land ? (
+                            <span
+                              title={
+                                STATUS_LABELS[dayStatuses.land] ||
+                                dayStatuses.land
+                              }
+                              className={`inline-block rounded border px-1 ${
+                                STATUS_BADGE_STYLES[dayStatuses.land] ||
+                                "border-primary-500/20 text-gray-300"
+                              }`}
+                            >
+                              {STATUS_SHORT_LABELS[dayStatuses.land] ||
+                                dayStatuses.land}
+                            </span>
+                          ) : (
+                            "-"
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           <div className="mt-4 rounded border border-primary-500/20 bg-primary-500/5 p-3">
@@ -932,6 +1081,10 @@ export default function AttendancePage() {
             <p className="text-xs text-slate-600 dark:text-gray-400 mt-2">
               Yellow-highlighted day cells indicate configured holiday or
               no-practice.
+            </p>
+            <p className="text-xs text-slate-600 dark:text-gray-400 mt-1">
+              Blue-highlighted day cells indicate special dates (meet, trial,
+              trip).
             </p>
           </div>
         </Card>
@@ -1020,78 +1173,112 @@ export default function AttendancePage() {
           Daily Attendance
         </h2>
 
-        <div className="grid grid-cols-7 gap-2 text-xs uppercase tracking-wide text-slate-500 dark:text-gray-400 mb-2">
-          <p>Mon</p>
-          <p>Tue</p>
-          <p>Wed</p>
-          <p>Thu</p>
-          <p>Fri</p>
-          <p>Sat</p>
-          <p>Sun</p>
-        </div>
+        <div className="overflow-x-auto -mx-2 sm:mx-0">
+          <div className="min-w-[560px] sm:min-w-0 px-2 sm:px-0">
+            <div className="grid grid-cols-7 gap-2 text-xs uppercase tracking-wide text-slate-500 dark:text-gray-400 mb-2">
+              <p>Mon</p>
+              <p>Tue</p>
+              <p>Wed</p>
+              <p>Thu</p>
+              <p>Fri</p>
+              <p>Sat</p>
+              <p>Sun</p>
+            </div>
 
-        <div className="grid grid-cols-7 gap-2">
-          {monthGrid.map((cellDate, index) => {
-            if (!cellDate) {
-              return (
-                <div
-                  key={`empty-${index}`}
-                  className="h-24 rounded border border-transparent"
-                />
-              );
-            }
-
-            const daySummary = daySummaries.get(cellDate);
-            const selected = cellDate === managerDate;
-            const dayNumber = Number(cellDate.slice(-2));
-            const holidayForDate = holidays.find((item) => {
-              return (
-                item.date === cellDate &&
-                (item.sessionType === "none" ||
-                  item.sessionType === managerType)
-              );
-            });
-
-            return (
-              <button
-                key={cellDate}
-                type="button"
-                onClick={() => setManagerDate(cellDate)}
-                title={
-                  holidayForDate
-                    ? `Holiday: ${holidayForDate.reason || "No reason provided"}`
-                    : undefined
+            <div className="grid grid-cols-7 gap-2">
+              {monthGrid.map((cellDate, index) => {
+                if (!cellDate) {
+                  return (
+                    <div
+                      key={`empty-${index}`}
+                      className="h-28 sm:h-24 rounded border border-transparent"
+                    />
+                  );
                 }
-                className={`h-24 rounded border p-2 text-left transition ${
-                  selected
-                    ? "border-primary-300 bg-primary-500/10"
-                    : holidayForDate
-                      ? "border-yellow-500/40 bg-yellow-500/10 hover:border-yellow-500/60"
-                      : "border-primary-500/20 hover:border-primary-400"
-                }`}
-              >
-                <p className="text-sm font-semibold text-slate-800 dark:text-gray-100">
-                  {dayNumber}
-                </p>
-                {holidayForDate && (
-                  <p className="text-[10px] uppercase tracking-wide text-yellow-600 dark:text-yellow-300">
-                    Holiday
-                  </p>
-                )}
-                <div className="mt-1 flex flex-wrap gap-1 text-[10px]">
-                  <span className="inline-block rounded border border-blue-500/30 bg-blue-500/15 px-1 text-blue-300">
-                    P {daySummary?.present || 0}
-                  </span>
-                  <span className="inline-block rounded border border-green-500/30 bg-green-500/15 px-1 text-green-300">
-                    AL {daySummary?.approved || 0}
-                  </span>
-                  <span className="inline-block rounded border border-red-500/30 bg-red-500/15 px-1 text-red-300">
-                    ABS {daySummary?.absent || 0}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
+
+                const daySummary = daySummaries.get(cellDate);
+                const selected = cellDate === managerDate;
+                const dayNumber = Number(cellDate.slice(-2));
+                const holidayForDate = holidays.find((item) => {
+                  return (
+                    item.date === cellDate &&
+                    (item.sessionType === "none" ||
+                      item.sessionType === managerType)
+                  );
+                });
+                const specialForDate = specialDates.find(
+                  (item) => item.date === cellDate,
+                );
+                const specialLabel = specialForDate
+                  ? specialForDate.label ||
+                    SPECIAL_DATE_LABELS[specialForDate.category]
+                  : "";
+                const specialSessionSuffix =
+                  specialForDate && specialForDate.sessionType !== "none"
+                    ? ` (${specialForDate.sessionType === "swimming" ? "Swim" : "Land"})`
+                    : "";
+                const specialDisplay = specialLabel
+                  ? `${specialLabel}${specialSessionSuffix}`
+                  : "";
+                const titleParts = [] as string[];
+
+                if (holidayForDate) {
+                  titleParts.push(
+                    `Holiday: ${holidayForDate.reason || "No reason provided"}`,
+                  );
+                }
+
+                if (specialDisplay) {
+                  titleParts.push(`Special: ${specialDisplay}`);
+                }
+
+                return (
+                  <button
+                    key={cellDate}
+                    type="button"
+                    onClick={() => setManagerDate(cellDate)}
+                    title={
+                      titleParts.length > 0 ? titleParts.join(" | ") : undefined
+                    }
+                    className={`h-28 sm:h-24 rounded border p-2 text-left transition overflow-hidden ${
+                      selected
+                        ? "border-primary-300 bg-primary-500/10"
+                        : holidayForDate
+                          ? "border-yellow-500/40 bg-yellow-500/10 hover:border-yellow-500/60"
+                          : specialForDate
+                            ? "border-sky-500/40 bg-sky-500/10 hover:border-sky-500/60"
+                            : "border-primary-500/20 hover:border-primary-400"
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-slate-800 dark:text-gray-100">
+                      {dayNumber}
+                    </p>
+                    {holidayForDate && (
+                      <p className="text-[10px] uppercase tracking-wide text-yellow-600 dark:text-yellow-300">
+                        Holiday
+                      </p>
+                    )}
+                    {specialForDate && (
+                      <p className="text-[10px] uppercase tracking-wide text-sky-600 dark:text-sky-300">
+                        {specialDisplay}
+                      </p>
+                    )}
+                    <div className="mt-1 flex flex-wrap gap-1 text-[10px]">
+                      <span className="inline-block rounded border border-blue-500/30 bg-blue-500/15 px-1 text-blue-300">
+                        P {daySummary?.present || 0}
+                      </span>
+                      <span className="inline-block rounded border border-green-500/30 bg-green-500/15 px-1 text-green-300">
+                        AL {daySummary?.approved || 0}
+                      </span>
+                      <span className="inline-block rounded border border-red-500/30 bg-red-500/15 px-1 text-red-300">
+                        ABS {daySummary?.absent || 0}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         <div className="mt-3 rounded border border-primary-500/20 bg-primary-500/5 p-3">
@@ -1118,6 +1305,10 @@ export default function AttendancePage() {
               Absent count
             </p>
           </div>
+          <p className="text-xs text-slate-600 dark:text-gray-400 mt-2">
+            Yellow-highlighted day cells indicate holiday/no-practice. Blue
+            indicates special dates (meet, trial, trip).
+          </p>
         </div>
 
         <div className="mt-4 border border-primary-500/20 rounded p-3 space-y-3">
@@ -1150,6 +1341,16 @@ export default function AttendancePage() {
                 />
                 <span>Allow override and still mark attendance</span>
               </label>
+            </div>
+          )}
+
+          {selectedPracticeMeta.special && (
+            <div className="rounded border border-sky-500/40 bg-sky-500/10 p-2 text-sm text-sky-200">
+              <p>
+                Special date:{" "}
+                {selectedPracticeMeta.special.label ||
+                  SPECIAL_DATE_LABELS[selectedPracticeMeta.special.category]}
+              </p>
             </div>
           )}
 
@@ -1383,7 +1584,7 @@ export default function AttendancePage() {
         )}
       </Card>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <Card>
           <h2 className="text-xl font-semibold text-primary-300 mb-3">
             Weekly Practice Schedule
@@ -1485,6 +1686,100 @@ export default function AttendancePage() {
                 {showAllHolidays
                   ? "Show Recent 5"
                   : `Show All (${holidays.length})`}
+              </Button>
+            )}
+          </div>
+        </Card>
+
+        <Card>
+          <h2 className="text-xl font-semibold text-primary-300 mb-3">
+            Special Dates
+          </h2>
+          <div className="space-y-3">
+            <Input
+              label="Date"
+              type="date"
+              value={specialDate}
+              onChange={(e) => setSpecialDate(e.target.value)}
+            />
+            <Select
+              label="Category"
+              value={specialCategory}
+              onChange={(e) =>
+                setSpecialCategory(e.target.value as SpecialDateCategory)
+              }
+              options={[
+                { value: "meet", label: "Meet" },
+                { value: "trial", label: "Trial" },
+                { value: "team-event", label: "Team Event" },
+                { value: "other", label: "Other" },
+              ]}
+            />
+            <Select
+              label="Affected Session"
+              value={specialSessionType}
+              onChange={(e) =>
+                setSpecialSessionType(
+                  e.target.value as "swimming" | "land" | "none",
+                )
+              }
+              options={[
+                { value: "none", label: "All / General" },
+                { value: "swimming", label: "Swimming Session" },
+                { value: "land", label: "Land Session" },
+              ]}
+            />
+            <Input
+              label="Label"
+              value={specialLabel}
+              onChange={(e) => setSpecialLabel(e.target.value)}
+              placeholder="Meet name / team event / trial"
+            />
+            <Button onClick={addSpecialDate}>Add / Update Special Date</Button>
+          </div>
+
+          <div className="mt-4 space-y-2 max-h-52 overflow-auto">
+            {specialDates.length === 0 ? (
+              <p className="text-gray-400">No special dates configured.</p>
+            ) : (
+              visibleSpecialDates.map((item) => (
+                <div
+                  key={specialKey(item)}
+                  className="border border-primary-500/20 rounded p-2 flex items-center justify-between gap-3"
+                >
+                  <div className="text-sm">
+                    <p className="text-slate-800 dark:text-gray-100">
+                      {item.date} (
+                      {item.sessionType === "none"
+                        ? "General / All Sessions"
+                        : item.sessionType === "swimming"
+                          ? "Swimming"
+                          : "Land"}
+                      )
+                    </p>
+                    <p className="text-slate-600 dark:text-gray-400">
+                      {item.label || "-"} · {SPECIAL_DATE_LABELS[item.category]}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    onClick={() => void removeSpecialDate(item)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))
+            )}
+            {specialDates.length > 5 && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setShowAllSpecialDates((prev) => !prev)}
+              >
+                {showAllSpecialDates
+                  ? "Show Recent 5"
+                  : `Show All (${specialDates.length})`}
               </Button>
             )}
           </div>

@@ -19,10 +19,31 @@ export interface ISettings {
     reason: string;
     sessionType: "swimming" | "land" | "none";
   }>;
+  specialDates: Array<{
+    date: Date;
+    label: string;
+    category: "meet" | "trial" | "team-event" | "other";
+    sessionType: "swimming" | "land" | "none";
+  }>;
   updatedBy: string;
   createdAt: Date;
   updatedAt: Date;
 }
+
+const specialDatesSchema = {
+  date: { type: Date, required: true },
+  label: { type: String, default: "" },
+  category: {
+    type: String,
+    enum: ["meet", "trial", "team-event", "other"],
+    default: "other",
+  },
+  sessionType: {
+    type: String,
+    enum: ["swimming", "land", "none"],
+    default: "none",
+  },
+};
 
 const settingsSchema = new Schema<ISettings>(
   {
@@ -89,6 +110,10 @@ const settingsSchema = new Schema<ISettings>(
       ],
       default: [],
     },
+    specialDates: {
+      type: [specialDatesSchema],
+      default: [],
+    },
     updatedBy: {
       type: String,
       default: "",
@@ -99,7 +124,20 @@ const settingsSchema = new Schema<ISettings>(
   },
 );
 
+const existingSettings = models.Settings as
+  | mongoose.Model<ISettings>
+  | undefined;
+
+if (existingSettings && !existingSettings.schema.path("specialDates")) {
+  existingSettings.schema.add({
+    specialDates: {
+      type: [specialDatesSchema],
+      default: [],
+    },
+  });
+}
+
 const Settings =
-  models.Settings || mongoose.model<ISettings>("Settings", settingsSchema);
+  existingSettings || mongoose.model<ISettings>("Settings", settingsSchema);
 
 export default Settings;

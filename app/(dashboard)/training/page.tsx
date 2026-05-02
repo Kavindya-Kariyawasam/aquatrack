@@ -40,7 +40,37 @@ type SettingsResponse = {
       reason?: string;
       sessionType: "swimming" | "land" | "none";
     }>;
+    specialDates?: Array<{
+      date: string;
+      label?: string;
+      category: "meet" | "trial" | "team-event" | "other";
+      sessionType: "swimming" | "land" | "none";
+    }>;
   };
+};
+
+type SpecialDateCategory = "meet" | "trial" | "team-event" | "other";
+
+type SpecialDateItem = {
+  date: string;
+  label?: string;
+  category: SpecialDateCategory;
+  sessionType: "swimming" | "land" | "none";
+};
+
+const SPECIAL_DATE_LABELS: Record<SpecialDateCategory, string> = {
+  meet: "Meet",
+  trial: "Trial",
+  "team-event": "Team Event",
+  other: "Special",
+};
+
+const SPECIAL_DATE_BADGE_STYLES: Record<SpecialDateCategory, string> = {
+  meet: "bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-200",
+  trial: "bg-cyan-100 text-cyan-800 dark:bg-cyan-500/20 dark:text-cyan-200",
+  "team-event":
+    "bg-teal-100 text-teal-800 dark:bg-teal-500/20 dark:text-teal-200",
+  other: "bg-slate-100 text-slate-700 dark:bg-slate-700/40 dark:text-gray-300",
 };
 
 function toIsoDate(value: Date | string): string {
@@ -117,6 +147,7 @@ export default function TrainingPage() {
       sessionType: "swimming" | "land" | "none";
     }>
   >([]);
+  const [specialDates, setSpecialDates] = useState<SpecialDateItem[]>([]);
   const [aiGenerationEnabled, setAiGenerationEnabled] = useState(true);
 
   const canManageSets = useMemo(
@@ -164,6 +195,20 @@ export default function TrainingPage() {
             date: toIsoDate(holiday.date),
             reason: holiday.reason || "",
             sessionType: holiday.sessionType,
+          })),
+        );
+      }
+
+      if (
+        settingsRes.ok &&
+        Array.isArray(settingsData?.settings?.specialDates)
+      ) {
+        setSpecialDates(
+          settingsData.settings.specialDates.map((item) => ({
+            date: toIsoDate(item.date),
+            label: item.label || "",
+            category: item.category,
+            sessionType: item.sessionType,
           })),
         );
       }
@@ -473,86 +518,124 @@ export default function TrainingPage() {
         <h2 className="text-xl font-semibold text-primary-300 mb-3">
           Training Calendar
         </h2>
-        <div className="grid grid-cols-7 gap-2 text-xs uppercase tracking-wide text-gray-400 mb-2">
-          <p>Mon</p>
-          <p>Tue</p>
-          <p>Wed</p>
-          <p>Thu</p>
-          <p>Fri</p>
-          <p>Sat</p>
-          <p>Sun</p>
-        </div>
+        <div className="overflow-x-auto -mx-2 sm:mx-0">
+          <div className="min-w-[560px] sm:min-w-0 px-2 sm:px-0">
+            <div className="grid grid-cols-7 gap-2 text-xs uppercase tracking-wide text-gray-400 mb-2">
+              <p>Mon</p>
+              <p>Tue</p>
+              <p>Wed</p>
+              <p>Thu</p>
+              <p>Fri</p>
+              <p>Sat</p>
+              <p>Sun</p>
+            </div>
 
-        <div className="grid grid-cols-7 gap-2">
-          {cells.map((cellDate, index) => {
-            if (!cellDate) {
-              return (
-                <div
-                  key={`empty-${index}`}
-                  className="h-20 rounded border border-transparent"
-                />
-              );
-            }
-
-            const count = dateCountLookup.get(cellDate) || 0;
-            const isSelected = cellDate === selectedDate;
-            const hasSet = count > 0;
-            const holidayForDate = holidays.find(
-              (holiday) =>
-                holiday.date === cellDate &&
-                (holiday.sessionType === "none" ||
-                  holiday.sessionType === type),
-            );
-
-            return (
-              <button
-                key={cellDate}
-                type="button"
-                onClick={() => {
-                  setSelectedDate(cellDate);
-                  if (canManageSets) {
-                    setPostDate(cellDate);
-                  }
-                }}
-                title={
-                  holidayForDate
-                    ? `Holiday: ${holidayForDate.reason || "No reason provided"}`
-                    : undefined
+            <div className="grid grid-cols-7 gap-2">
+              {cells.map((cellDate, index) => {
+                if (!cellDate) {
+                  return (
+                    <div
+                      key={`empty-${index}`}
+                      className="h-24 sm:h-20 rounded border border-transparent"
+                    />
+                  );
                 }
-                className={`h-20 rounded border p-2 text-left transition ${
-                  isSelected
-                    ? "border-primary-300 bg-primary-500/10"
-                    : holidayForDate
-                      ? "border-yellow-500/40 bg-yellow-500/10 hover:border-yellow-500/60"
-                      : "border-primary-500/20 hover:border-primary-400"
-                }`}
-              >
-                <p className="text-sm font-semibold text-slate-800 dark:text-gray-100">
-                  {Number(cellDate.slice(-2))}
-                </p>
-                {holidayForDate && (
-                  <p className="text-[10px] uppercase tracking-wide text-yellow-600 dark:text-yellow-300">
-                    Holiday
-                  </p>
-                )}
-                <p
-                  className={`mt-1 text-xs ${
-                    hasSet
-                      ? "inline-block rounded px-1.5 py-0.5 font-semibold bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-green-300"
-                      : holidayForDate
-                        ? "inline-block rounded px-1.5 py-0.5 bg-yellow-100 text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-300"
-                        : "inline-block rounded px-1.5 py-0.5 bg-slate-100 text-slate-700 dark:bg-slate-700/40 dark:text-gray-300"
-                  }`}
-                >
-                  {hasSet
-                    ? `${count} set${count > 1 ? "s" : ""}`
-                    : holidayForDate
-                      ? "No practice"
-                      : "No set"}
-                </p>
-              </button>
-            );
-          })}
+
+                const count = dateCountLookup.get(cellDate) || 0;
+                const isSelected = cellDate === selectedDate;
+                const hasSet = count > 0;
+                const holidayForDate = holidays.find(
+                  (holiday) =>
+                    holiday.date === cellDate &&
+                    (holiday.sessionType === "none" ||
+                      holiday.sessionType === type),
+                );
+                const specialForDate = specialDates.find(
+                  (item) => item.date === cellDate,
+                );
+                const specialLabel = specialForDate
+                  ? specialForDate.label ||
+                    SPECIAL_DATE_LABELS[specialForDate.category]
+                  : "";
+                const specialSessionSuffix =
+                  specialForDate && specialForDate.sessionType !== "none"
+                    ? ` (${specialForDate.sessionType === "swimming" ? "Swim" : "Land"})`
+                    : "";
+                const specialDisplay = specialLabel
+                  ? `${specialLabel}${specialSessionSuffix}`
+                  : "";
+                const titleParts = [] as string[];
+
+                if (holidayForDate) {
+                  titleParts.push(
+                    `Holiday: ${holidayForDate.reason || "No reason provided"}`,
+                  );
+                }
+
+                if (specialDisplay) {
+                  titleParts.push(`Special: ${specialDisplay}`);
+                }
+
+                return (
+                  <button
+                    key={cellDate}
+                    type="button"
+                    onClick={() => {
+                      setSelectedDate(cellDate);
+                      if (canManageSets) {
+                        setPostDate(cellDate);
+                      }
+                    }}
+                    title={
+                      titleParts.length > 0 ? titleParts.join(" | ") : undefined
+                    }
+                    className={`h-24 sm:h-20 rounded border p-2 text-left transition overflow-hidden ${
+                      isSelected
+                        ? "border-primary-300 bg-primary-500/10"
+                        : holidayForDate
+                          ? "border-yellow-500/40 bg-yellow-500/10 hover:border-yellow-500/60"
+                          : specialForDate
+                            ? "border-sky-500/40 bg-sky-500/10 hover:border-sky-500/60"
+                            : "border-primary-500/20 hover:border-primary-400"
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-slate-800 dark:text-gray-100">
+                      {Number(cellDate.slice(-2))}
+                    </p>
+                    {holidayForDate && (
+                      <p className="text-[10px] uppercase tracking-wide text-yellow-600 dark:text-yellow-300">
+                        Holiday
+                      </p>
+                    )}
+                    {specialForDate && (
+                      <p className="text-[10px] uppercase tracking-wide text-sky-600 dark:text-sky-300">
+                        {specialDisplay}
+                      </p>
+                    )}
+                    <p
+                      className={`mt-1 text-[11px] leading-tight max-w-full truncate ${
+                        hasSet
+                          ? "inline-block rounded px-1.5 py-0.5 font-semibold bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-green-300"
+                          : holidayForDate
+                            ? "inline-block rounded px-1.5 py-0.5 bg-yellow-100 text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-300"
+                            : specialForDate
+                              ? `inline-block rounded px-1.5 py-0.5 ${SPECIAL_DATE_BADGE_STYLES[specialForDate.category]}`
+                              : "inline-block rounded px-1.5 py-0.5 bg-slate-100 text-slate-700 dark:bg-slate-700/40 dark:text-gray-300"
+                      }`}
+                    >
+                      {hasSet
+                        ? `${count} set${count > 1 ? "s" : ""}`
+                        : holidayForDate
+                          ? "No practice"
+                          : specialForDate
+                            ? specialDisplay
+                            : "No set"}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </Card>
 

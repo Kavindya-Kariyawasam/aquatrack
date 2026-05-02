@@ -14,9 +14,21 @@ const SCHEDULE_KEYS = [
 ] as const;
 
 type ScheduleValue = "swimming" | "land" | "none";
+type SpecialDateCategory = "meet" | "trial" | "team-event" | "other";
 
 function isValidScheduleValue(value: unknown): value is ScheduleValue {
   return value === "swimming" || value === "land" || value === "none";
+}
+
+function isValidSpecialDateCategory(
+  value: unknown,
+): value is SpecialDateCategory {
+  return (
+    value === "meet" ||
+    value === "trial" ||
+    value === "team-event" ||
+    value === "other"
+  );
 }
 
 export async function GET(req: NextRequest) {
@@ -45,6 +57,7 @@ export async function GET(req: NextRequest) {
           sunday: "none",
         },
         holidays: [],
+        specialDates: [],
         updatedBy: authUser.userId,
       });
     }
@@ -151,6 +164,57 @@ export async function PUT(req: NextRequest) {
       updates.holidays = normalizedHolidays;
     }
 
+    if (Array.isArray(body.specialDates)) {
+      const normalizedSpecialDates = body.specialDates
+        .map(
+          (item: {
+            date?: string;
+            sessionType?: unknown;
+            category?: unknown;
+            label?: string;
+          }) => {
+            const date = new Date(item?.date || "");
+            const sessionType = item?.sessionType;
+            const category = item?.category;
+            const label = String(item?.label || "")
+              .trim()
+              .slice(0, 80);
+
+            if (
+              Number.isNaN(date.getTime()) ||
+              !isValidScheduleValue(sessionType) ||
+              !isValidSpecialDateCategory(category)
+            ) {
+              return null;
+            }
+
+            return {
+              date,
+              sessionType,
+              category,
+              label,
+            };
+          },
+        )
+        .filter(
+          (
+            item: {
+              date: Date;
+              sessionType: ScheduleValue;
+              category: SpecialDateCategory;
+              label: string;
+            } | null,
+          ): item is {
+            date: Date;
+            sessionType: ScheduleValue;
+            category: SpecialDateCategory;
+            label: string;
+          } => Boolean(item),
+        );
+
+      updates.specialDates = normalizedSpecialDates;
+    }
+
     await dbConnect();
 
     const latest = await Settings.findOne().sort({ updatedAt: -1 }).lean();
@@ -177,6 +241,7 @@ export async function PUT(req: NextRequest) {
             sunday: "none",
           },
           holidays: [],
+          specialDates: [],
           ...updates,
         });
 
