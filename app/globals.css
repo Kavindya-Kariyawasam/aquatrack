@@ -221,7 +221,27 @@ select.input-field {
 /* Ensure native date/month pickers don't overlap the input border on mobile */
 input[type="date"].input-field,
 input[type="month"].input-field {
-  padding-right: 3rem; /* match select padding */
+  padding-right: 3rem; /* default spacing for desktop */
+  padding-inline-end: 3rem;
+}
+
+input[type="date"].input-field::-webkit-calendar-picker-indicator,
+input[type="month"].input-field::-webkit-calendar-picker-indicator {
+  margin-right: 0.35rem;
+  padding: 0.2rem;
+}
+
+@media (max-width: 640px) {
+  input[type="date"].input-field,
+  input[type="month"].input-field {
+    padding-right: 4rem;
+    padding-inline-end: 4rem;
+  }
+
+  input[type="date"].input-field::-webkit-calendar-picker-indicator,
+  input[type="month"].input-field::-webkit-calendar-picker-indicator {
+    transform: translateX(-0.2rem);
+  }
 }
 
 /* For non-classed native inputs also provide minimal spacing */
