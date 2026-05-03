@@ -180,6 +180,14 @@ export default function AttendancePage() {
   const [swimmers, setSwimmers] = useState<SwimmerOption[]>([]);
   const [isMarking, setIsMarking] = useState(false);
   const [overrideNoPractice, setOverrideNoPractice] = useState(false);
+  const [leaveApprovalTarget, setLeaveApprovalTarget] =
+    useState<SwimmerOption | null>(null);
+  const [leaveApprovalAttendanceId, setLeaveApprovalAttendanceId] = useState<
+    string | null
+  >(null);
+  const [leaveApprovalType, setLeaveApprovalType] =
+    useState<keyof typeof LEAVE_TYPES>("exam");
+  const [leaveApprovalReason, setLeaveApprovalReason] = useState("");
 
   const [weeklySchedule, setWeeklySchedule] = useState<
     Record<string, "swimming" | "land" | "none">
@@ -746,6 +754,7 @@ export default function AttendancePage() {
   const markAttendance = async (
     swimmerId: string,
     status: "present" | "absent-unrequested" | "absent-approved",
+    details?: { leaveType?: keyof typeof LEAVE_TYPES; reason?: string },
   ) => {
     if (selectedPracticeMeta.blocked && !overrideNoPractice) {
       toast.error("Selected date is marked as no-practice. Enable override.");
@@ -762,6 +771,10 @@ export default function AttendancePage() {
           date: managerDate,
           type: managerType,
           status,
+          leaveType:
+            status === "absent-approved" ? details?.leaveType : undefined,
+          reason:
+            status === "absent-approved" ? details?.reason?.trim() : undefined,
         }),
       });
 
@@ -784,6 +797,92 @@ export default function AttendancePage() {
     } finally {
       setIsMarking(false);
     }
+  };
+
+  const openApprovedLeavePanel = (swimmer: SwimmerOption) => {
+    if (selectedPracticeMeta.blocked && !overrideNoPractice) {
+      toast.error("Selected date is marked as no-practice. Enable override.");
+      return;
+    }
+
+    const existing = selectedDateRecords.find(
+      (record) => record.userId === swimmer._id,
+    );
+    const existingLeaveType = existing?.leaveType as
+      | keyof typeof LEAVE_TYPES
+      | undefined;
+
+    setLeaveApprovalType(existingLeaveType || "exam");
+    setLeaveApprovalReason(existing?.reason || "");
+    setLeaveApprovalTarget(swimmer);
+    setLeaveApprovalAttendanceId(null);
+  };
+
+  const openApproveFromRecord = (record: AttendanceRecord) => {
+    if (selectedPracticeMeta.blocked && !overrideNoPractice) {
+      toast.error("Selected date is marked as no-practice. Enable override.");
+      return;
+    }
+
+    setLeaveApprovalType(
+      (record.leaveType || "exam") as keyof typeof LEAVE_TYPES,
+    );
+    setLeaveApprovalReason(record.reason || "");
+    setLeaveApprovalTarget({
+      _id: record.userId,
+      name: record.userName || record.userId,
+    });
+    setLeaveApprovalAttendanceId(record._id);
+  };
+
+  const closeApprovedLeavePanel = () => {
+    setLeaveApprovalTarget(null);
+    setLeaveApprovalReason("");
+  };
+
+  const confirmApprovedLeave = async () => {
+    if (!leaveApprovalTarget) return;
+
+    // If approving an existing attendance request, call the approve endpoint
+    if (leaveApprovalAttendanceId) {
+      try {
+        setIsMarking(true);
+        const response = await fetch("/api/attendance/approve", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            attendanceId: leaveApprovalAttendanceId,
+            approve: true,
+            leaveType: leaveApprovalType,
+            reason: leaveApprovalReason?.trim(),
+          }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          toast.error(data.error || "Failed to approve request");
+          return;
+        }
+
+        toast.success("Request approved");
+        await Promise.all([
+          loadManagerRecords(),
+          loadSummary(),
+          loadCalendarRecords(),
+        ]);
+      } catch {
+        toast.error("Network error while approving request");
+      } finally {
+        setIsMarking(false);
+      }
+    } else {
+      await markAttendance(leaveApprovalTarget._id, "absent-approved", {
+        leaveType: leaveApprovalType,
+        reason: leaveApprovalReason,
+      });
+    }
+
+    closeApprovedLeavePanel();
   };
 
   const addLeaveDate = () => {
@@ -1458,12 +1557,7 @@ export default function AttendancePage() {
                                     : "secondary"
                                 }
                                 isLoading={isMarking}
-                                onClick={() =>
-                                  void markAttendance(
-                                    swimmer._id,
-                                    "absent-approved",
-                                  )
-                                }
+                                onClick={() => openApprovedLeavePanel(swimmer)}
                               >
                                 Approved Leave
                               </Button>
@@ -1565,7 +1659,7 @@ export default function AttendancePage() {
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            onClick={() => void onApprove(record._id, true)}
+                            onClick={() => openApproveFromRecord(record)}
                           >
                             Approve
                           </Button>
@@ -1830,6 +1924,55 @@ export default function AttendancePage() {
           </div>
         </Card>
       </div>
+
+      {leaveApprovalTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
+          <div className="w-full max-w-md rounded-xl border border-primary-500/20 bg-white p-4 shadow-xl dark:bg-dark-card">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+              Approve Leave Details
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">
+              {leaveApprovalTarget.name} · {formatDate(managerDate)} ·{" "}
+              {managerType === "swimming" ? "Swimming" : "Land"}
+            </p>
+
+            <div className="mt-4 space-y-3">
+              <Select
+                label="Leave Type"
+                value={leaveApprovalType}
+                onChange={(e) =>
+                  setLeaveApprovalType(
+                    e.target.value as keyof typeof LEAVE_TYPES,
+                  )
+                }
+                options={Object.entries(LEAVE_TYPES).map(([value, label]) => ({
+                  value,
+                  label,
+                }))}
+              />
+              <Input
+                label="Reason (optional)"
+                value={leaveApprovalReason}
+                onChange={(e) => setLeaveApprovalReason(e.target.value)}
+                placeholder="Optional note for this leave"
+              />
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                variant="secondary"
+                onClick={closeApprovedLeavePanel}
+                disabled={isMarking}
+              >
+                Cancel
+              </Button>
+              <Button onClick={confirmApprovedLeave} isLoading={isMarking}>
+                Confirm Approved Leave
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

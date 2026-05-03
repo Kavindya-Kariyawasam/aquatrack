@@ -30,15 +30,32 @@ export async function POST(req: NextRequest) {
 
     await dbConnect();
 
+    const updateDoc: any = {
+      $set: {
+        status: approve ? "absent-approved" : "absent-unrequested",
+        approvedBy: authUser.userId,
+        approvedAt: new Date(),
+      },
+    };
+
+    // optional leaveType and reason when approving
+    const leaveType = body.leaveType
+      ? String(body.leaveType).trim()
+      : undefined;
+    const reason = body.reason
+      ? String(body.reason).trim().slice(0, 200)
+      : undefined;
+
+    if (approve) {
+      if (leaveType) updateDoc.$set.leaveType = leaveType;
+      if (reason) updateDoc.$set.reason = reason;
+    } else {
+      updateDoc.$unset = { leaveType: "", reason: "" };
+    }
+
     const updated = await Attendance.findByIdAndUpdate(
       attendanceId,
-      {
-        $set: {
-          status: approve ? "absent-approved" : "absent-unrequested",
-          approvedBy: authUser.userId,
-          approvedAt: new Date(),
-        },
-      },
+      updateDoc,
       { new: true },
     ).lean();
 

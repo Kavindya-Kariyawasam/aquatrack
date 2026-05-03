@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/lib/jwt";
 import dbConnect from "@/lib/mongodb";
+import { LEAVE_TYPES } from "@/lib/constants";
 import Attendance from "@/models/Attendance";
 import User from "@/models/User";
 
@@ -98,6 +99,8 @@ export async function POST(req: NextRequest) {
       .trim()
       .toLowerCase();
     const status = String(body.status || "").trim();
+    const leaveType = String(body.leaveType || "").trim();
+    const reason = String(body.reason || "").trim();
 
     if (!userId || !date || Number.isNaN(date.getTime())) {
       return NextResponse.json(
@@ -125,11 +128,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (
+      status === "absent-approved" &&
+      !Object.prototype.hasOwnProperty.call(LEAVE_TYPES, leaveType)
+    ) {
+      return NextResponse.json(
+        { error: "Leave type is required for approved leave" },
+        { status: 400 },
+      );
+    }
+
     await dbConnect();
+
+    const updateDoc: Record<string, Record<string, unknown>> = {
+      $set: { status },
+    };
+
+    if (status === "absent-approved") {
+      updateDoc.$set.leaveType = leaveType;
+      updateDoc.$set.reason = reason.slice(0, 200);
+    } else {
+      updateDoc.$unset = { leaveType: "", reason: "" };
+    }
 
     const record = await Attendance.findOneAndUpdate(
       { userId, date, type },
-      { $set: { status } },
+      updateDoc,
       { upsert: true, new: true },
     ).lean();
 
