@@ -473,7 +473,7 @@ export default function AdminPage() {
             </Button>
           </div>
 
-          <div className="mt-4 max-h-64 overflow-auto rounded border border-primary-500/20 pr-1">
+          <div className="mt-4 max-h-[10rem] overflow-y-auto rounded border border-primary-500/20 pr-1">
             {meetCatalog.length === 0 ? (
               <p className="p-3 text-sm text-gray-400">
                 No catalog entries yet.

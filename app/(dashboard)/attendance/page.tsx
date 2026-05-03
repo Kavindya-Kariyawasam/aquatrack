@@ -32,8 +32,11 @@ type AttendanceSummaryRow = {
   userId: string;
   userName: string;
   approved: number;
+  present: number;
+  absent: number;
   pending: number;
   rejected: number;
+  markedDates: number;
   byLeaveType: Record<string, number>;
 };
 
@@ -182,6 +185,7 @@ export default function AttendancePage() {
   const [attendanceLogsFilter, setAttendanceLogsFilter] =
     useState<AttendanceLogFilter>("all");
   const [summaryRows, setSummaryRows] = useState<AttendanceSummaryRow[]>([]);
+  const [totalMarkedDates, setTotalMarkedDates] = useState(0);
   const [swimmerMonthSummary, setSwimmerMonthSummary] =
     useState<SwimmerMonthSummary | null>(null);
   const [calendarRecords, setCalendarRecords] = useState<AttendanceRecord[]>(
@@ -309,6 +313,7 @@ export default function AttendancePage() {
       const data = await response.json();
       if (response.ok && Array.isArray(data.summary)) {
         setSummaryRows(data.summary);
+        setTotalMarkedDates(data.totalMarkedDates || 0);
       }
     } catch {
       toast.error("Failed to load attendance summary");
@@ -2051,6 +2056,9 @@ export default function AttendancePage() {
       <Card>
         <h2 className="text-xl font-semibold text-primary-300 mb-3">
           Monthly Swimmer Summary
+          <span className="ml-2 text-sm font-normal text-gray-400">
+            ({totalMarkedDates} marked dates)
+          </span>
         </h2>
         {summaryRows.length === 0 ? (
           <p className="text-gray-400">No swimmer summary for this month.</p>
@@ -2059,17 +2067,37 @@ export default function AttendancePage() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Swimmer</th>
-                  <th>Approved</th>
-                  <th>Pending</th>
-                  <th>Rejected</th>
-                  <th>Leave Type Breakdown</th>
+                  <th className="md:sticky md:top-0 md:z-20 md:bg-slate-900 md:dark:bg-dark-card">
+                    Swimmer
+                  </th>
+                  <th className="md:sticky md:top-0 md:z-20 md:bg-slate-900 md:dark:bg-dark-card">
+                    Present
+                  </th>
+                  <th className="md:sticky md:top-0 md:z-20 md:bg-slate-900 md:dark:bg-dark-card">
+                    Absent
+                  </th>
+                  <th className="md:sticky md:top-0 md:z-20 md:bg-slate-900 md:dark:bg-dark-card">
+                    Approved
+                  </th>
+                  <th className="md:sticky md:top-0 md:z-20 md:bg-slate-900 md:dark:bg-dark-card">
+                    Pending
+                  </th>
+                  <th className="md:sticky md:top-0 md:z-20 md:bg-slate-900 md:dark:bg-dark-card">
+                    Rejected
+                  </th>
+                  <th className="md:sticky md:top-0 md:z-20 md:bg-slate-900 md:dark:bg-dark-card">
+                    Leave Type Breakdown
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {summaryRows.map((row) => (
                   <tr key={row.userId}>
-                    <td>{row.userName}</td>
+                    <td className="md:sticky md:left-0 md:z-10 md:bg-slate-900 md:dark:bg-dark-card">
+                      {row.userName}
+                    </td>
+                    <td className="text-blue-300">{row.present}</td>
+                    <td className="text-red-300">{row.absent}</td>
                     <td className="text-green-400">{row.approved}</td>
                     <td className="text-yellow-300">{row.pending}</td>
                     <td className="text-red-400">{row.rejected}</td>

@@ -18,6 +18,11 @@ function getMonthBounds(monthText: string): { startDate: Date; endDate: Date } {
   };
 }
 
+function toIsoDate(dateLike: Date | string) {
+  const date = typeof dateLike === "string" ? new Date(dateLike) : dateLike;
+  return date.toISOString().slice(0, 10);
+}
+
 export async function GET(req: NextRequest) {
   try {
     const authUser = getUserFromRequest(req);
@@ -45,6 +50,10 @@ export async function GET(req: NextRequest) {
       const approved = records.filter(
         (record) => record.status === "absent-approved",
       ).length;
+      const present = records.filter(
+        (record) => record.status === "present",
+      ).length;
+      const absent = records.length - present;
       const pending = records.filter(
         (record) => record.status === "absent-requested",
       ).length;
@@ -59,13 +68,20 @@ export async function GET(req: NextRequest) {
           (byLeaveType[record.leaveType] || 0) + 1;
       }
 
+      const markedDates = new Set(
+        records.map((record) => toIsoDate(record.date)),
+      ).size;
+
       return NextResponse.json({
         success: true,
         summary: {
           approved,
+          present,
+          absent,
           pending,
           rejected,
           byLeaveType,
+          markedDates,
           totalRecords: records.length,
         },
       });
@@ -81,8 +97,11 @@ export async function GET(req: NextRequest) {
         userId: string;
         userName: string;
         approved: number;
+        present: number;
+        absent: number;
         pending: number;
         rejected: number;
+        markedDates: number;
         byLeaveType: Record<string, number>;
       }
     >();
@@ -96,19 +115,31 @@ export async function GET(req: NextRequest) {
         userId: String(swimmer._id),
         userName: profile?.callingName || profile?.fullName || swimmer.email,
         approved: 0,
+        present: 0,
+        absent: 0,
         pending: 0,
         rejected: 0,
+        markedDates: 0,
         byLeaveType: {},
       });
     }
+
+    const markedDatesByUser = new Map<string, Set<string>>();
 
     for (const record of records) {
       const target = statsByUser.get(record.userId);
       if (!target) continue;
 
+      const dateSet = markedDatesByUser.get(record.userId) || new Set<string>();
+      dateSet.add(toIsoDate(record.date));
+      markedDatesByUser.set(record.userId, dateSet);
+
+      if (record.status === "present") target.present += 1;
       if (record.status === "absent-approved") target.approved += 1;
       if (record.status === "absent-requested") target.pending += 1;
       if (record.status === "absent-unrequested") target.rejected += 1;
+
+      if (record.status !== "present") target.absent += 1;
 
       if (record.leaveType && record.status === "absent-approved") {
         target.byLeaveType[record.leaveType] =
@@ -116,11 +147,26 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    for (const [userId, dateSet] of markedDatesByUser) {
+      const target = statsByUser.get(userId);
+      if (target) target.markedDates = dateSet.size;
+    }
+
+    // Calculate total unique marked dates across all swimmers
+    const allMarkedDates = new Set<string>();
+    for (const dateSet of markedDatesByUser.values()) {
+      dateSet.forEach((date) => allMarkedDates.add(date));
+    }
+
     const summary = Array.from(statsByUser.values()).sort((a, b) =>
       a.userName.localeCompare(b.userName),
     );
 
-    return NextResponse.json({ success: true, summary });
+    return NextResponse.json({
+      success: true,
+      summary,
+      totalMarkedDates: allMarkedDates.size,
+    });
   } catch (error) {
     console.error("Attendance summary error:", error);
     return NextResponse.json(
