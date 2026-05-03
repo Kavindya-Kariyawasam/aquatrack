@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Circle, Pencil, X } from "lucide-react";
+import { Check, Circle, Pencil, Trash2, X } from "lucide-react";
 import toast from "react-hot-toast";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -224,6 +224,9 @@ export default function AttendancePage() {
   const [attendanceEditLeaveType, setAttendanceEditLeaveType] =
     useState<keyof typeof LEAVE_TYPES>("exam");
   const [attendanceEditReason, setAttendanceEditReason] = useState("");
+  const [deletingLeaveRequestId, setDeletingLeaveRequestId] = useState<
+    string | null
+  >(null);
 
   const [weeklySchedule, setWeeklySchedule] = useState<
     Record<string, "swimming" | "land" | "none">
@@ -513,6 +516,49 @@ export default function AttendancePage() {
       toast.error("Network error");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const onDeleteLeaveRequest = async (record: AttendanceRecord) => {
+    if (record.status !== "absent-requested") {
+      toast.error(
+        "This request has already been processed by admins and cannot be deleted",
+      );
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete pending leave request for ${formatDate(record.date)}?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingLeaveRequestId(record._id);
+    try {
+      const response = await fetch("/api/attendance/request", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attendanceId: record._id }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.error || "Failed to delete leave request");
+        return;
+      }
+
+      toast.success("Leave request deleted");
+      await Promise.all([
+        loadSwimmerRecords(),
+        loadSwimmerSummary(),
+        loadCalendarRecords(),
+      ]);
+    } catch {
+      toast.error("Network error while deleting leave request");
+    } finally {
+      setDeletingLeaveRequestId(null);
     }
   };
 
@@ -1464,6 +1510,7 @@ export default function AttendancePage() {
                     <th>Status</th>
                     <th>Leave Type</th>
                     <th>Reason</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1478,6 +1525,18 @@ export default function AttendancePage() {
                       </td>
                       <td>{record.leaveType || "-"}</td>
                       <td>{record.reason || "-"}</td>
+                      <td>
+                        <button
+                          type="button"
+                          onClick={() => void onDeleteLeaveRequest(record)}
+                          disabled={deletingLeaveRequestId === record._id}
+                          aria-label="Delete leave request"
+                          title="Delete leave request"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/15 text-red-300 transition hover:bg-red-500/25 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

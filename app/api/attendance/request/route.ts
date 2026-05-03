@@ -181,3 +181,59 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const authUser = getUserFromRequest(req);
+    if (!authUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const attendanceId = String(body.attendanceId || "").trim();
+
+    if (!attendanceId) {
+      return NextResponse.json(
+        { error: "attendanceId is required" },
+        { status: 400 },
+      );
+    }
+
+    await dbConnect();
+
+    const record = await Attendance.findById(attendanceId).lean();
+    if (!record) {
+      return NextResponse.json(
+        { error: "Leave request not found" },
+        { status: 404 },
+      );
+    }
+
+    const canManageAll = authUser.role === "admin" || authUser.role === "coach";
+    const isOwner = record.userId === authUser.userId;
+
+    if (!canManageAll && !isOwner) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (record.status !== "absent-requested") {
+      return NextResponse.json(
+        {
+          error:
+            "This request has already been processed by admins and cannot be deleted",
+        },
+        { status: 409 },
+      );
+    }
+
+    await Attendance.findByIdAndDelete(attendanceId);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Attendance request DELETE error:", error);
+    return NextResponse.json(
+      { error: "Failed to delete leave request" },
+      { status: 500 },
+    );
+  }
+}

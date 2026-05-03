@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Pencil, X } from "lucide-react";
+import { Check, Pencil, Trash2, X } from "lucide-react";
 import toast from "react-hot-toast";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -60,6 +60,9 @@ export default function AdminPage() {
   const [priority, setPriority] = useState("medium");
   const [isSaving, setIsSaving] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [deletingRequestId, setDeletingRequestId] = useState<string | null>(
+    null,
+  );
 
   const sortedUsers = useMemo(() => {
     const getUserLabel = (user: UserItem) => {
@@ -266,12 +269,22 @@ export default function AdminPage() {
     }
   };
 
-  const onApprove = async (attendanceId: string, approve: boolean) => {
+  const onApprove = async (
+    attendanceId: string,
+    approve: boolean,
+    leaveType?: string,
+    reason?: string,
+  ) => {
     try {
       const response = await fetch("/api/attendance/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ attendanceId, approve }),
+        body: JSON.stringify({
+          attendanceId,
+          approve,
+          ...(leaveType && { leaveType }),
+          ...(reason && { reason }),
+        }),
       });
 
       const data = await response.json();
@@ -285,6 +298,38 @@ export default function AdminPage() {
       await loadData();
     } catch {
       toast.error("Network error while updating request");
+    }
+  };
+
+  const onDeletePendingRequest = async (record: PendingRequest) => {
+    const confirmed = window.confirm(
+      `Delete pending leave request for ${record.userName || record.userId} on ${new Date(record.date).toLocaleDateString()}?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingRequestId(record._id);
+    try {
+      const response = await fetch("/api/attendance/request", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attendanceId: record._id }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.error || "Failed to delete leave request");
+        return;
+      }
+
+      toast.success("Leave request deleted");
+      await loadData();
+    } catch {
+      toast.error("Network error while deleting leave request");
+    } finally {
+      setDeletingRequestId(null);
     }
   };
 
@@ -633,7 +678,14 @@ export default function AdminPage() {
                       type="button"
                       aria-label="Approve leave request"
                       title="Approve leave request"
-                      onClick={() => onApprove(record._id, true)}
+                      onClick={() =>
+                        onApprove(
+                          record._id,
+                          true,
+                          record.leaveType,
+                          record.reason,
+                        )
+                      }
                       className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-green-500/40 bg-green-500/15 text-green-300 transition hover:bg-green-500/25"
                     >
                       <Check size={15} />
@@ -646,6 +698,16 @@ export default function AdminPage() {
                       className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/15 text-red-300 transition hover:bg-red-500/25"
                     >
                       <X size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Delete pending leave request"
+                      title="Delete pending leave request"
+                      onClick={() => void onDeletePendingRequest(record)}
+                      disabled={deletingRequestId === record._id}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/15 text-red-300 transition hover:bg-red-500/25 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <Trash2 size={15} />
                     </button>
                   </div>
                 </div>
