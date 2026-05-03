@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Check, Circle, Pencil, X } from "lucide-react";
 import toast from "react-hot-toast";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -76,6 +77,19 @@ type DaySummary = {
 type SwimmerMonthSummary = {
   byLeaveType: Record<string, number>;
 };
+
+type LeaveLogFilter =
+  | "all"
+  | "absent-requested"
+  | "absent-approved"
+  | "absent-unrequested";
+type AttendanceLogFilter =
+  | "all"
+  | "present"
+  | "absent-unrequested"
+  | "absent-approved";
+
+type RejectResolution = "present" | "absent-unrequested";
 
 const STATUS_STYLES: Record<string, string> = {
   "absent-requested": "text-yellow-300",
@@ -164,7 +178,9 @@ export default function AttendancePage() {
   const [monthFilter, setMonthFilter] = useState(
     new Date().toISOString().slice(0, 7),
   );
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [leaveLogsFilter, setLeaveLogsFilter] = useState<LeaveLogFilter>("all");
+  const [attendanceLogsFilter, setAttendanceLogsFilter] =
+    useState<AttendanceLogFilter>("all");
   const [summaryRows, setSummaryRows] = useState<AttendanceSummaryRow[]>([]);
   const [swimmerMonthSummary, setSwimmerMonthSummary] =
     useState<SwimmerMonthSummary | null>(null);
@@ -188,6 +204,22 @@ export default function AttendancePage() {
   const [leaveApprovalType, setLeaveApprovalType] =
     useState<keyof typeof LEAVE_TYPES>("exam");
   const [leaveApprovalReason, setLeaveApprovalReason] = useState("");
+  const [leaveApprovalDate, setLeaveApprovalDate] = useState("");
+  const [leaveApprovalSessionType, setLeaveApprovalSessionType] = useState<
+    "swimming" | "land"
+  >("swimming");
+  const [pendingRejectRecord, setPendingRejectRecord] =
+    useState<AttendanceRecord | null>(null);
+  const [rejectResolution, setRejectResolution] =
+    useState<RejectResolution>("absent-unrequested");
+  const [attendanceEditRecord, setAttendanceEditRecord] =
+    useState<AttendanceRecord | null>(null);
+  const [attendanceEditStatus, setAttendanceEditStatus] = useState<
+    "present" | "absent-unrequested" | "absent-approved"
+  >("present");
+  const [attendanceEditLeaveType, setAttendanceEditLeaveType] =
+    useState<keyof typeof LEAVE_TYPES>("exam");
+  const [attendanceEditReason, setAttendanceEditReason] = useState("");
 
   const [weeklySchedule, setWeeklySchedule] = useState<
     Record<string, "swimming" | "land" | "none">
@@ -258,7 +290,6 @@ export default function AttendancePage() {
     try {
       const params = new URLSearchParams();
       if (monthFilter) params.set("month", monthFilter);
-      if (statusFilter !== "all") params.set("status", statusFilter);
 
       const response = await fetch(`/api/attendance?${params.toString()}`);
       const data = await response.json();
@@ -268,7 +299,7 @@ export default function AttendancePage() {
     } catch {
       toast.error("Failed to load attendance records");
     }
-  }, [monthFilter, statusFilter]);
+  }, [monthFilter]);
 
   const loadSummary = useCallback(async () => {
     try {
@@ -480,27 +511,6 @@ export default function AttendancePage() {
     }
   };
 
-  const onApprove = async (attendanceId: string, approve: boolean) => {
-    try {
-      const response = await fetch("/api/attendance/approve", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ attendanceId, approve }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        toast.error(data.error || "Failed to update request");
-        return;
-      }
-
-      toast.success(approve ? "Request approved" : "Request rejected");
-      await Promise.all([loadManagerRecords(), loadSummary()]);
-    } catch {
-      toast.error("Network error while updating request");
-    }
-  };
-
   const saveAttendanceSettings = async (
     nextSchedule = weeklySchedule,
     nextHolidays = holidays,
@@ -690,6 +700,46 @@ export default function AttendancePage() {
     );
   }, [leaveFilterMode, leaveMonth, records]);
 
+  const managerLeaveLogRecords = useMemo(() => {
+    const leaveRecords = records.filter((record) =>
+      ["absent-requested", "absent-approved", "absent-unrequested"].includes(
+        record.status,
+      ),
+    );
+
+    const filtered =
+      leaveLogsFilter === "all"
+        ? leaveRecords
+        : leaveRecords.filter((record) => record.status === leaveLogsFilter);
+
+    return [...filtered].sort((a, b) => {
+      const dateCompare = toIsoDate(b.date).localeCompare(toIsoDate(a.date));
+      if (dateCompare !== 0) return dateCompare;
+      return (a.userName || a.userId).localeCompare(b.userName || b.userId);
+    });
+  }, [leaveLogsFilter, records]);
+
+  const managerAttendanceLogRecords = useMemo(() => {
+    const attendanceRecords = records.filter((record) =>
+      ["present", "absent-approved", "absent-unrequested"].includes(
+        record.status,
+      ),
+    );
+
+    const filtered =
+      attendanceLogsFilter === "all"
+        ? attendanceRecords
+        : attendanceRecords.filter(
+            (record) => record.status === attendanceLogsFilter,
+          );
+
+    return [...filtered].sort((a, b) => {
+      const dateCompare = toIsoDate(b.date).localeCompare(toIsoDate(a.date));
+      if (dateCompare !== 0) return dateCompare;
+      return (a.userName || a.userId).localeCompare(b.userName || b.userId);
+    });
+  }, [attendanceLogsFilter, records]);
+
   const selectedStatusByUser = useMemo(() => {
     const map = new Map<string, AttendanceRecord["status"]>();
     for (const record of selectedDateRecords) {
@@ -816,14 +866,11 @@ export default function AttendancePage() {
     setLeaveApprovalReason(existing?.reason || "");
     setLeaveApprovalTarget(swimmer);
     setLeaveApprovalAttendanceId(null);
+    setLeaveApprovalDate(managerDate);
+    setLeaveApprovalSessionType(managerType);
   };
 
   const openApproveFromRecord = (record: AttendanceRecord) => {
-    if (selectedPracticeMeta.blocked && !overrideNoPractice) {
-      toast.error("Selected date is marked as no-practice. Enable override.");
-      return;
-    }
-
     setLeaveApprovalType(
       (record.leaveType || "exam") as keyof typeof LEAVE_TYPES,
     );
@@ -833,10 +880,13 @@ export default function AttendancePage() {
       name: record.userName || record.userId,
     });
     setLeaveApprovalAttendanceId(record._id);
+    setLeaveApprovalDate(toIsoDate(record.date));
+    setLeaveApprovalSessionType(record.type);
   };
 
   const closeApprovedLeavePanel = () => {
     setLeaveApprovalTarget(null);
+    setLeaveApprovalAttendanceId(null);
     setLeaveApprovalReason("");
   };
 
@@ -883,6 +933,166 @@ export default function AttendancePage() {
     }
 
     closeApprovedLeavePanel();
+  };
+
+  const getIsPastDate = (dateText: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(`${toIsoDate(dateText)}T00:00:00`);
+    return target.getTime() < today.getTime();
+  };
+
+  const setLeaveRequestStatus = async (
+    record: AttendanceRecord,
+    targetStatus: "absent-requested" | "absent-unrequested",
+  ) => {
+    if (targetStatus === "absent-requested" && getIsPastDate(record.date)) {
+      toast.error("Cannot set pending on a past date");
+      return;
+    }
+
+    setIsMarking(true);
+    try {
+      const response = await fetch("/api/attendance/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          attendanceId: record._id,
+          targetStatus,
+          leaveType: record.leaveType,
+          reason: record.reason,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.error || "Failed to update leave request");
+        return;
+      }
+
+      toast.success(
+        targetStatus === "absent-requested"
+          ? "Set to pending"
+          : "Set to rejected",
+      );
+      await Promise.all([
+        loadManagerRecords(),
+        loadSummary(),
+        loadCalendarRecords(),
+      ]);
+    } catch {
+      toast.error("Network error while updating leave request");
+    } finally {
+      setIsMarking(false);
+    }
+  };
+
+  const confirmRejectResolution = async () => {
+    if (!pendingRejectRecord) return;
+
+    if (rejectResolution === "absent-unrequested") {
+      await setLeaveRequestStatus(pendingRejectRecord, "absent-unrequested");
+    } else {
+      setIsMarking(true);
+      try {
+        const response = await fetch("/api/attendance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: pendingRejectRecord.userId,
+            date: toIsoDate(pendingRejectRecord.date),
+            type: pendingRejectRecord.type,
+            status: "present",
+          }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          toast.error(data.error || "Failed to set present status");
+          return;
+        }
+
+        toast.success("Updated to present");
+        await Promise.all([
+          loadManagerRecords(),
+          loadSummary(),
+          loadCalendarRecords(),
+        ]);
+      } catch {
+        toast.error("Network error while updating status");
+      } finally {
+        setIsMarking(false);
+      }
+    }
+
+    setPendingRejectRecord(null);
+  };
+
+  const openAttendanceEditPanel = (record: AttendanceRecord) => {
+    if (record.status === "absent-requested") {
+      toast.error(
+        "Pending leave requests can only be updated in Leave Request Logs",
+      );
+      return;
+    }
+
+    const nextStatus =
+      record.status === "present" ||
+      record.status === "absent-unrequested" ||
+      record.status === "absent-approved"
+        ? record.status
+        : "present";
+
+    setAttendanceEditRecord(record);
+    setAttendanceEditStatus(nextStatus);
+    setAttendanceEditLeaveType(
+      (record.leaveType || "exam") as keyof typeof LEAVE_TYPES,
+    );
+    setAttendanceEditReason(record.reason || "");
+  };
+
+  const confirmAttendanceEdit = async () => {
+    if (!attendanceEditRecord) return;
+
+    setIsMarking(true);
+    try {
+      const response = await fetch("/api/attendance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: attendanceEditRecord.userId,
+          date: toIsoDate(attendanceEditRecord.date),
+          type: attendanceEditRecord.type,
+          status: attendanceEditStatus,
+          leaveType:
+            attendanceEditStatus === "absent-approved"
+              ? attendanceEditLeaveType
+              : undefined,
+          reason:
+            attendanceEditStatus === "absent-approved"
+              ? attendanceEditReason
+              : undefined,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.error || "Failed to update attendance log");
+        return;
+      }
+
+      toast.success("Attendance log updated");
+      await Promise.all([
+        loadManagerRecords(),
+        loadSummary(),
+        loadCalendarRecords(),
+      ]);
+      setAttendanceEditRecord(null);
+    } catch {
+      toast.error("Network error while updating attendance log");
+    } finally {
+      setIsMarking(false);
+    }
   };
 
   const addLeaveDate = () => {
@@ -1279,7 +1489,7 @@ export default function AttendancePage() {
       <h1 className="section-heading">Attendance Management</h1>
 
       <Card>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Input
             label="Month"
             type="month"
@@ -1295,18 +1505,6 @@ export default function AttendancePage() {
             options={[
               { value: "swimming", label: "Swimming" },
               { value: "land", label: "Land / Dryland" },
-            ]}
-          />
-          <Select
-            label="Status Filter"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            options={[
-              { value: "all", label: "All" },
-              { value: "absent-requested", label: "Pending" },
-              { value: "absent-approved", label: "Approved" },
-              { value: "absent-unrequested", label: "Rejected" },
-              { value: "present", label: "Present" },
             ]}
           />
         </div>
@@ -1622,13 +1820,171 @@ export default function AttendancePage() {
       </Card>
 
       <Card>
-        <h2 className="text-xl font-semibold text-primary-300 mb-3">
-          Attendance Logs
-        </h2>
-        {records.length === 0 ? (
-          <p className="text-gray-400">No attendance records found.</p>
+        <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
+          <h2 className="text-xl font-semibold text-primary-300">
+            Leave Request Logs
+          </h2>
+          <Select
+            label="Leave Status"
+            value={leaveLogsFilter}
+            onChange={(e) =>
+              setLeaveLogsFilter(e.target.value as LeaveLogFilter)
+            }
+            options={[
+              { value: "all", label: "All" },
+              { value: "absent-requested", label: "Pending" },
+              { value: "absent-approved", label: "Approved" },
+              { value: "absent-unrequested", label: "Rejected" },
+            ]}
+          />
+        </div>
+
+        {managerLeaveLogRecords.length === 0 ? (
+          <p className="text-gray-400">No leave request records found.</p>
         ) : (
-          <div className="max-h-[70vh] overflow-auto">
+          <div className="max-h-[55vh] overflow-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Swimmer</th>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Leave Type</th>
+                  <th>Reason</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {managerLeaveLogRecords.map((record, index) => {
+                  const dateKey = toIsoDate(record.date);
+                  const previousDateKey =
+                    index > 0
+                      ? toIsoDate(managerLeaveLogRecords[index - 1].date)
+                      : null;
+                  const isPastDate = getIsPastDate(record.date);
+                  const canSetPending = !isPastDate;
+
+                  return (
+                    <Fragment key={record._id}>
+                      {dateKey !== previousDateKey && (
+                        <tr key={`leave-group-${dateKey}`}>
+                          <td
+                            colSpan={7}
+                            className="bg-primary-500/10 text-primary-200 font-semibold"
+                          >
+                            {formatDate(record.date)}
+                          </td>
+                        </tr>
+                      )}
+                      <tr key={record._id}>
+                        <td>{record.userName || record.userId}</td>
+                        <td>{formatDate(record.date)}</td>
+                        <td className="capitalize">{record.type}</td>
+                        <td
+                          className={`capitalize font-medium ${STATUS_STYLES[record.status] || "text-gray-200"}`}
+                        >
+                          {record.status.replaceAll("-", " ")}
+                        </td>
+                        <td>{record.leaveType || "-"}</td>
+                        <td>{record.reason || "-"}</td>
+                        <td>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              title={
+                                record.status === "absent-approved"
+                                  ? "Approved"
+                                  : "Set approved"
+                              }
+                              onClick={() => openApproveFromRecord(record)}
+                              className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border transition ${
+                                record.status === "absent-approved"
+                                  ? "border-green-500/70 bg-green-500/25 text-green-300"
+                                  : "border-green-500/40 bg-green-500/10 text-green-300 hover:bg-green-500/20"
+                              }`}
+                            >
+                              <Check size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              title={
+                                record.status === "absent-requested"
+                                  ? "Pending"
+                                  : canSetPending
+                                    ? "Set pending"
+                                    : "Pending blocked for past dates"
+                              }
+                              disabled={!canSetPending || isMarking}
+                              onClick={() =>
+                                void setLeaveRequestStatus(
+                                  record,
+                                  "absent-requested",
+                                )
+                              }
+                              className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                                record.status === "absent-requested"
+                                  ? "border-yellow-500/70 bg-yellow-500/25 text-yellow-300"
+                                  : "border-yellow-500/40 bg-yellow-500/10 text-yellow-300 hover:bg-yellow-500/20"
+                              }`}
+                            >
+                              <Circle size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              title={
+                                record.status === "absent-unrequested"
+                                  ? "Rejected"
+                                  : "Set rejected"
+                              }
+                              onClick={() => {
+                                setPendingRejectRecord(record);
+                                setRejectResolution("absent-unrequested");
+                              }}
+                              className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border transition ${
+                                record.status === "absent-unrequested"
+                                  ? "border-red-500/70 bg-red-500/25 text-red-300"
+                                  : "border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20"
+                              }`}
+                            >
+                              <X size={15} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      <Card>
+        <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
+          <h2 className="text-xl font-semibold text-primary-300">
+            Attendance Logs
+          </h2>
+          <Select
+            label="Attendance Status"
+            value={attendanceLogsFilter}
+            onChange={(e) =>
+              setAttendanceLogsFilter(e.target.value as AttendanceLogFilter)
+            }
+            options={[
+              { value: "all", label: "All" },
+              { value: "present", label: "Present" },
+              { value: "absent-unrequested", label: "Absent" },
+              { value: "absent-approved", label: "Approved Leave" },
+            ]}
+          />
+        </div>
+
+        {managerAttendanceLogRecords.length === 0 ? (
+          <p className="text-gray-400">No attendance logs found.</p>
+        ) : (
+          <div className="max-h-[55vh] overflow-auto">
             <table className="data-table">
               <thead>
                 <tr>
@@ -1642,41 +1998,50 @@ export default function AttendancePage() {
                 </tr>
               </thead>
               <tbody>
-                {records.map((record) => (
-                  <tr key={record._id}>
-                    <td>{record.userName || record.userId}</td>
-                    <td>{formatDate(record.date)}</td>
-                    <td className="capitalize">{record.type}</td>
-                    <td
-                      className={`capitalize font-medium ${STATUS_STYLES[record.status] || "text-gray-200"}`}
-                    >
-                      {record.status.replaceAll("-", " ")}
-                    </td>
-                    <td>{record.leaveType || "-"}</td>
-                    <td>{record.reason || "-"}</td>
-                    <td>
-                      {record.status === "absent-requested" ? (
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => openApproveFromRecord(record)}
+                {managerAttendanceLogRecords.map((record, index) => {
+                  const dateKey = toIsoDate(record.date);
+                  const previousDateKey =
+                    index > 0
+                      ? toIsoDate(managerAttendanceLogRecords[index - 1].date)
+                      : null;
+
+                  return (
+                    <Fragment key={record._id}>
+                      {dateKey !== previousDateKey && (
+                        <tr key={`attendance-group-${dateKey}`}>
+                          <td
+                            colSpan={7}
+                            className="bg-primary-500/10 text-primary-200 font-semibold"
                           >
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            onClick={() => void onApprove(record._id, false)}
-                          >
-                            Reject
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-500">No action</span>
+                            {formatDate(record.date)}
+                          </td>
+                        </tr>
                       )}
-                    </td>
-                  </tr>
-                ))}
+                      <tr key={record._id}>
+                        <td>{record.userName || record.userId}</td>
+                        <td>{formatDate(record.date)}</td>
+                        <td className="capitalize">{record.type}</td>
+                        <td
+                          className={`capitalize font-medium ${STATUS_STYLES[record.status] || "text-gray-200"}`}
+                        >
+                          {record.status.replaceAll("-", " ")}
+                        </td>
+                        <td>{record.leaveType || "-"}</td>
+                        <td>{record.reason || "-"}</td>
+                        <td>
+                          <button
+                            type="button"
+                            title="Update attendance log"
+                            onClick={() => openAttendanceEditPanel(record)}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-sky-500/40 bg-sky-500/10 text-sky-300 transition hover:bg-sky-500/20"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -1932,8 +2297,8 @@ export default function AttendancePage() {
               Approve Leave Details
             </h3>
             <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">
-              {leaveApprovalTarget.name} · {formatDate(managerDate)} ·{" "}
-              {managerType === "swimming" ? "Swimming" : "Land"}
+              {leaveApprovalTarget.name} · {formatDate(leaveApprovalDate)} ·{" "}
+              {leaveApprovalSessionType === "swimming" ? "Swimming" : "Land"}
             </p>
 
             <div className="mt-4 space-y-3">
@@ -1968,6 +2333,122 @@ export default function AttendancePage() {
               </Button>
               <Button onClick={confirmApprovedLeave} isLoading={isMarking}>
                 Confirm Approved Leave
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingRejectRecord && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
+          <div className="w-full max-w-md rounded-xl border border-primary-500/20 bg-white p-4 shadow-xl dark:bg-dark-card">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+              Confirm Rejected Leave Resolution
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">
+              {pendingRejectRecord.userName || pendingRejectRecord.userId} ·{" "}
+              {formatDate(pendingRejectRecord.date)} ·{" "}
+              {pendingRejectRecord.type}
+            </p>
+
+            <div className="mt-4 space-y-3">
+              <Select
+                label="Set final status as"
+                value={rejectResolution}
+                onChange={(e) =>
+                  setRejectResolution(e.target.value as RejectResolution)
+                }
+                options={[
+                  { value: "absent-unrequested", label: "Absent" },
+                  { value: "present", label: "Present" },
+                ]}
+              />
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => setPendingRejectRecord(null)}
+                disabled={isMarking}
+              >
+                Cancel
+              </Button>
+              <Button onClick={confirmRejectResolution} isLoading={isMarking}>
+                Confirm
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {attendanceEditRecord && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
+          <div className="w-full max-w-md rounded-xl border border-primary-500/20 bg-white p-4 shadow-xl dark:bg-dark-card">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+              Update Attendance Log
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">
+              {attendanceEditRecord.userName || attendanceEditRecord.userId} ·{" "}
+              {formatDate(attendanceEditRecord.date)} ·{" "}
+              {attendanceEditRecord.type}
+            </p>
+
+            <div className="mt-4 space-y-3">
+              <Select
+                label="Status"
+                value={attendanceEditStatus}
+                onChange={(e) =>
+                  setAttendanceEditStatus(
+                    e.target.value as
+                      | "present"
+                      | "absent-unrequested"
+                      | "absent-approved",
+                  )
+                }
+                options={[
+                  { value: "present", label: "Present" },
+                  { value: "absent-unrequested", label: "Absent" },
+                  { value: "absent-approved", label: "Approved Leave" },
+                ]}
+              />
+
+              {attendanceEditStatus === "absent-approved" && (
+                <>
+                  <Select
+                    label="Leave Type"
+                    value={attendanceEditLeaveType}
+                    onChange={(e) =>
+                      setAttendanceEditLeaveType(
+                        e.target.value as keyof typeof LEAVE_TYPES,
+                      )
+                    }
+                    options={Object.entries(LEAVE_TYPES).map(
+                      ([value, label]) => ({
+                        value,
+                        label,
+                      }),
+                    )}
+                  />
+                  <Input
+                    label="Reason (optional)"
+                    value={attendanceEditReason}
+                    onChange={(e) => setAttendanceEditReason(e.target.value)}
+                    placeholder="Optional note for approved leave"
+                  />
+                </>
+              )}
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => setAttendanceEditRecord(null)}
+                disabled={isMarking}
+              >
+                Cancel
+              </Button>
+              <Button onClick={confirmAttendanceEdit} isLoading={isMarking}>
+                Confirm Update
               </Button>
             </div>
           </div>

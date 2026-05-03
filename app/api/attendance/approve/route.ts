@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { LEAVE_TYPES } from "@/lib/constants";
 import { getUserFromRequest } from "@/lib/jwt";
 import dbConnect from "@/lib/mongodb";
 import Attendance from "@/models/Attendance";
@@ -20,6 +21,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const attendanceId = String(body.attendanceId || "").trim();
     const approve = body.approve !== false;
+    const targetStatus = String(body.targetStatus || "").trim();
 
     if (!attendanceId) {
       return NextResponse.json(
@@ -30,15 +32,38 @@ export async function POST(req: NextRequest) {
 
     await dbConnect();
 
+    const nextStatus =
+      targetStatus || (approve ? "absent-approved" : "absent-unrequested");
+
+    if (
+      !["absent-requested", "absent-approved", "absent-unrequested"].includes(
+        nextStatus,
+      )
+    ) {
+      return NextResponse.json(
+        { error: "Invalid target status" },
+        { status: 400 },
+      );
+    }
+
     const updateDoc: any = {
       $set: {
-        status: approve ? "absent-approved" : "absent-unrequested",
-        approvedBy: authUser.userId,
-        approvedAt: new Date(),
+        status: nextStatus,
       },
     };
 
-    // optional leaveType and reason when approving
+    if (nextStatus === "absent-approved") {
+      updateDoc.$set.approvedBy = authUser.userId;
+      updateDoc.$set.approvedAt = new Date();
+    } else {
+      updateDoc.$unset = {
+        ...(updateDoc.$unset || {}),
+        approvedBy: "",
+        approvedAt: "",
+      };
+    }
+
+    // optional leaveType and reason
     const leaveType = body.leaveType
       ? String(body.leaveType).trim()
       : undefined;
@@ -46,11 +71,23 @@ export async function POST(req: NextRequest) {
       ? String(body.reason).trim().slice(0, 200)
       : undefined;
 
-    if (approve) {
-      if (leaveType) updateDoc.$set.leaveType = leaveType;
+    if (nextStatus === "absent-approved") {
+      if (
+        !leaveType ||
+        !Object.prototype.hasOwnProperty.call(LEAVE_TYPES, leaveType)
+      ) {
+        return NextResponse.json(
+          { error: "Valid leave type is required for approved leave" },
+          { status: 400 },
+        );
+      }
+
+      updateDoc.$set.leaveType = leaveType;
       if (reason) updateDoc.$set.reason = reason;
     } else {
-      updateDoc.$unset = { leaveType: "", reason: "" };
+      // keep requested details for pending/rejected leave logs
+      if (leaveType) updateDoc.$set.leaveType = leaveType;
+      if (reason) updateDoc.$set.reason = reason;
     }
 
     const updated = await Attendance.findByIdAndUpdate(

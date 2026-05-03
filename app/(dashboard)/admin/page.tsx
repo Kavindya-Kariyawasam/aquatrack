@@ -629,19 +629,24 @@ export default function AdminPage() {
                     {new Date(record.date).toLocaleDateString()} · {record.type}
                   </p>
                   <div className="flex gap-2">
-                    <Button
-                      size="sm"
+                    <button
+                      type="button"
+                      aria-label="Approve leave request"
+                      title="Approve leave request"
                       onClick={() => onApprove(record._id, true)}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-green-500/40 bg-green-500/15 text-green-300 transition hover:bg-green-500/25"
                     >
-                      Approve
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="danger"
+                      <Check size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Reject leave request"
+                      title="Reject leave request"
                       onClick={() => onApprove(record._id, false)}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/15 text-red-300 transition hover:bg-red-500/25"
                     >
-                      Reject
-                    </Button>
+                      <X size={15} />
+                    </button>
                   </div>
                 </div>
                 <p className="text-sm text-gray-300">
